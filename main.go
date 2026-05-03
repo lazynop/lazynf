@@ -1,13 +1,9 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
 var version = "0.0.1-dev"
 
 func main() {
 	fmt.Println("vellum", version)
-	_ = os.Args
 }
