@@ -71,7 +71,7 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 			} else {
 				name := fonts[idx]
 				entry, isInstalled := installed[name]
-				sb.WriteString(renderCell(name, entry, isInstalled, nameWidth, colWidth))
+				sb.WriteString(renderCell(name, entry, isInstalled, colWidth))
 			}
 			if row < numRows-1 {
 				sb.WriteRune('\n')
@@ -94,7 +94,7 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 
 // renderCell returns a single grid cell of exactly colWidth visible characters.
 // The cell is just the font name, colored by install status (no inline status text).
-func renderCell(name string, entry state.InstalledFont, isInstalled bool, nameWidth, colWidth int) string {
+func renderCell(name string, entry state.InstalledFont, isInstalled bool, colWidth int) string {
 	var sb strings.Builder
 
 	// Font name — colored by install status.
