@@ -33,10 +33,7 @@ func NewRoot(version string) *cobra.Command {
 			}
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if flagQuiet && flagVerbose {
-				return fmt.Errorf("--quiet and --verbose are mutually exclusive")
-			}
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
 	}
