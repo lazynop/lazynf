@@ -4,6 +4,10 @@ All notable changes to Vellum are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+- `vellum list` now renders a multi-column color-coded grid on a TTY, with installed fonts marked by a green ✓ + release tag and imported fonts marked yellow. Pipe / redirected output stays plain one-per-line for scripts.
+- `vellum list --installed` renders a bordered table on a TTY (font / release / installed at). Pipe / redirected output is `<name>\t<release>` per line for scripts.
+
 ### Added
 - `vellum import [<font>...]` adopts Nerd Fonts already present on disk (e.g. installed by getnf or manually) into Vellum's state manifest. With `--detect`, hashes the on-disk files against the latest release to record the actual upstream tag; without `--detect`, marks the release as `imported` (a future `vellum update` will refresh it). `--all` scans the font dir and imports every subdirectory whose name matches a catalog entry.
 
