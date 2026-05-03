@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/lazynop/vellum/internal/archive"
+	"github.com/lazynop/vellum/internal/cache"
 	"github.com/lazynop/vellum/internal/fontcache"
 	"github.com/lazynop/vellum/internal/github"
 	"github.com/lazynop/vellum/internal/state"
@@ -30,6 +31,11 @@ type InstallParams struct {
 	GitHub       *github.Client
 	AssetURLBase string // e.g. "https://github.com/ryanoasis/nerd-fonts/releases/download"
 	Refresher    fontcache.Refresher
+
+	// CatalogOverride lets a caller (e.g. Update) inject an already-resolved
+	// catalog and skip the redundant ResolveCatalog roundtrip. Optional: when
+	// nil, Install resolves the catalog itself.
+	CatalogOverride *cache.Catalog
 }
 
 // DefaultAssetURLBase is the canonical Nerd Fonts release asset base URL.
@@ -55,9 +61,13 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 	}
 
 	// Resolve catalog (may hit the network).
-	cat, err := ResolveCatalog(p.GitHub, p.CatalogPath)
-	if err != nil {
-		return nil, err
+	cat := p.CatalogOverride
+	if cat == nil {
+		resolved, err := ResolveCatalog(p.GitHub, p.CatalogPath)
+		if err != nil {
+			return nil, err
+		}
+		cat = resolved
 	}
 
 	manifest, err := state.Load(p.StatePath)

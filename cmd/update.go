@@ -15,6 +15,7 @@ func newUpdateCmd() *cobra.Command {
 	var (
 		flagDest        string
 		flagForce       bool
+		flagKeepArchive bool
 		flagNoCacheRefr bool
 	)
 	c := &cobra.Command{
@@ -52,6 +53,7 @@ already at the latest release.`,
 
 			opts := fonts.UpdateOptions{
 				Force:            flagForce,
+				KeepArchive:      flagKeepArchive,
 				SkipCacheRefresh: flagNoCacheRefr,
 				OnProgress: func(font string, written, total int64) {
 					if !showProgress {
@@ -115,7 +117,9 @@ already at the latest release.`,
 				return err
 			}
 
-			summarizeUpdate(v, res)
+			if v.Level != ui.LevelQuiet || len(res.Failures) > 0 {
+				summarizeUpdate(v, res)
+			}
 
 			if len(res.Failures) > 0 {
 				return errors.New("one or more fonts failed to update")
@@ -125,6 +129,7 @@ already at the latest release.`,
 	}
 	c.Flags().StringVar(&flagDest, "dest", "", "override font install dir (default: $XDG_DATA_HOME/fonts)")
 	c.Flags().BoolVar(&flagForce, "force", false, "refresh even fonts already at the latest release")
+	c.Flags().BoolVar(&flagKeepArchive, "keep-archive", false, "keep downloaded zips in the archives cache")
 	c.Flags().BoolVar(&flagNoCacheRefr, "no-cache-refresh", false, "skip the final fc-cache invocation")
 	return c
 }

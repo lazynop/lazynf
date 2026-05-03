@@ -14,6 +14,10 @@ import (
 // IsStale reports whether a font at the given recorded release should be
 // refreshed. It returns true when release equals the imported sentinel (which
 // carries no version information) or when release does not match currentTag.
+//
+// Fonts marked with the imported sentinel are always considered stale because
+// their actual upstream tag is unknown — the next update fetches the current
+// release and replaces the sentinel with the real tag.
 func IsStale(release, currentTag string) bool {
 	return release == state.ReleaseImported || release != currentTag
 }
@@ -86,15 +90,17 @@ func Update(ctx context.Context, p UpdateParams, opts UpdateOptions) (*UpdateRes
 
 	// Delegate to Install with Force=true so DetectConflict returns
 	// ActionReinstall and the install dir is wiped + re-extracted.
+	// Pass CatalogOverride so Install skips the redundant ResolveCatalog call.
 	installRes, err := Install(ctx, InstallParams{
-		Names:        stale,
-		FontDir:      p.FontDir,
-		StatePath:    p.StatePath,
-		CatalogPath:  p.CatalogPath,
-		ArchivesDir:  p.ArchivesDir,
-		GitHub:       p.GitHub,
-		AssetURLBase: p.AssetURLBase,
-		Refresher:    p.Refresher,
+		Names:           stale,
+		FontDir:         p.FontDir,
+		StatePath:       p.StatePath,
+		CatalogPath:     p.CatalogPath,
+		ArchivesDir:     p.ArchivesDir,
+		GitHub:          p.GitHub,
+		AssetURLBase:    p.AssetURLBase,
+		Refresher:       p.Refresher,
+		CatalogOverride: cat,
 	}, InstallOptions{
 		Force:            true,
 		KeepArchive:      opts.KeepArchive,
