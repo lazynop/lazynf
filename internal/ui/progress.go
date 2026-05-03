@@ -15,7 +15,6 @@ import (
 type ProgressTracker struct {
 	label  string
 	prog   *tea.Program
-	wg     sync.WaitGroup
 	done   chan struct{}
 	mu     sync.Mutex
 	closed bool
@@ -96,12 +95,22 @@ func NewProgress(label string) *ProgressTracker {
 }
 
 // Start launches the bubbletea program in a goroutine. Non-blocking.
+// Calling Start more than once is a no-op.
 func (p *ProgressTracker) Start() {
+	p.mu.Lock()
+	if p.prog != nil {
+		p.mu.Unlock()
+		return // already started; single-use
+	}
 	p.prog = tea.NewProgram(newProgressModel(p.label))
-	p.wg.Add(1)
+	p.mu.Unlock()
 	go func() {
-		defer p.wg.Done()
 		_, _ = p.prog.Run()
+		// Mark closed so subsequent Update/Finish/Fail are no-ops even if
+		// the program exited via Ctrl-C (kill path) rather than via doneMsg.
+		p.mu.Lock()
+		p.closed = true
+		p.mu.Unlock()
 		close(p.done)
 	}()
 }
@@ -137,5 +146,4 @@ func (p *ProgressTracker) close(ok bool, reason string) {
 	p.prog.Send(doneMsg{ok: ok, reason: reason})
 	p.mu.Unlock()
 	<-p.done
-	p.wg.Wait()
 }
