@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"time"
 
@@ -37,14 +38,20 @@ const DefaultAssetURLBase = "https://github.com/ryanoasis/nerd-fonts/releases/do
 // Install runs the batch install pipeline. Best-effort: per-font failures are
 // recorded in InstallResult.Failures and the next font is attempted.
 //
-// Returns an error only for non-recoverable failures BEFORE the per-font loop
-// (catalog resolution, state load). Per-font failures are reported in the result.
+// Returns an error for non-recoverable failures BEFORE the per-font loop
+// (catalog resolution, state load) and for a state-save failure AFTER the loop.
+// In the post-loop case the returned *InstallResult is non-nil and may contain
+// installed fonts whose disk presence is not reflected in state.json — callers
+// should report both the error and the partial result.
 func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*InstallResult, error) {
 	if p.AssetURLBase == "" {
 		p.AssetURLBase = DefaultAssetURLBase
 	}
 	if p.FontDir == "" {
 		return nil, errors.New("install: FontDir is required")
+	}
+	if p.Refresher == nil {
+		p.Refresher = fontcache.Default()
 	}
 
 	// Resolve catalog (may hit the network).
@@ -59,10 +66,10 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 	}
 
 	res := &InstallResult{Failures: map[string]error{}}
-	any := false
+	anyInstalled := false
 
 	for _, name := range p.Names {
-		if !contains(cat.Fonts, name) {
+		if !slices.Contains(cat.Fonts, name) {
 			suggestions := Suggest(cat.Fonts, name, 3)
 			err := wrapFontNotFound(name, suggestions)
 			res.Failures[name] = err
@@ -91,7 +98,7 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 			}
 		}
 
-		files, err := installOne(ctx, name, cat.Release, installDir, p, opts)
+		files, err := installOne(name, cat.Release, installDir, p, opts)
 		if err != nil {
 			res.Failures[name] = err
 			emit(opts.OnEvent, Event{Font: name, Kind: EventInstallError, Err: err})
@@ -104,7 +111,7 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 			Dir:         installDir,
 			Files:       files,
 		}
-		any = true
+		anyInstalled = true
 		res.Successes = append(res.Successes, name)
 		emit(opts.OnEvent, Event{Font: name, Kind: EventInstallSuccess, Files: files})
 	}
@@ -115,7 +122,7 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 	}
 
 	// Refresh the OS font cache once at the end if anything changed.
-	if any && !opts.SkipCacheRefresh {
+	if anyInstalled && !opts.SkipCacheRefresh {
 		emit(opts.OnEvent, Event{Kind: EventCacheRefresh})
 		if err := p.Refresher.Refresh(ctx); err != nil {
 			// Soft failure: surface as event, do NOT mark batch as failed.
@@ -125,7 +132,7 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 	return res, nil
 }
 
-func installOne(ctx context.Context, name, release, installDir string, p InstallParams, opts InstallOptions) ([]string, error) {
+func installOne(name, release, installDir string, p InstallParams, opts InstallOptions) ([]string, error) {
 	if err := os.MkdirAll(installDir, 0o755); err != nil {
 		if errors.Is(err, os.ErrPermission) {
 			return nil, fmt.Errorf("%w: %s", ErrPermission, installDir)
@@ -143,6 +150,7 @@ func installOne(ctx context.Context, name, release, installDir string, p Install
 	url := fmt.Sprintf("%s/%s/%s.zip", p.AssetURLBase, release, name)
 
 	emit(opts.OnEvent, Event{Font: name, Kind: EventDownloadStart})
+	// TODO: thread ctx through DownloadAsset once it has a context-aware variant.
 	if err := github.DownloadAsset(url, zipPath, func(w, t int64) {
 		if opts.OnProgress != nil {
 			opts.OnProgress(name, w, t)
@@ -163,10 +171,12 @@ func installOne(ctx context.Context, name, release, installDir string, p Install
 	emit(opts.OnEvent, Event{Font: name, Kind: EventExtractDone, Files: files})
 
 	if opts.KeepArchive {
-		if err := os.MkdirAll(p.ArchivesDir, 0o755); err == nil {
+		if err := os.MkdirAll(p.ArchivesDir, 0o755); err != nil {
+			// Don't fail the install just because archive keeping failed.
+			emit(opts.OnEvent, Event{Font: name, Kind: EventInstallError, Err: fmt.Errorf("keep archive: mkdir: %w", err)})
+		} else {
 			kept := filepath.Join(p.ArchivesDir, fmt.Sprintf("%s-%s.zip", name, release))
 			if err := copyFile(zipPath, kept); err != nil {
-				// Don't fail the install just because archive keeping failed.
 				emit(opts.OnEvent, Event{Font: name, Kind: EventInstallError, Err: fmt.Errorf("keep archive: %w", err)})
 			}
 		}
@@ -180,15 +190,6 @@ func wrapFontNotFound(name string, suggestions []string) error {
 		return fmt.Errorf("%w: %s", ErrFontNotFound, name)
 	}
 	return fmt.Errorf("%w: %s (did you mean: %v?)", ErrFontNotFound, name, suggestions)
-}
-
-func contains(s []string, target string) bool {
-	for _, v := range s {
-		if v == target {
-			return true
-		}
-	}
-	return false
 }
 
 func emit(fn func(Event), e Event) {
@@ -207,7 +208,9 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close() // surface flush/close errors
 }
