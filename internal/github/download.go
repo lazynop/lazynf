@@ -12,6 +12,10 @@ import (
 // ProgressFunc is called as bytes are written to disk.
 // `written` is total bytes written so far; `total` is the expected size in
 // bytes (from Content-Length, 0 if unknown).
+//
+// The callback is invoked on every io.Read tick, which for multi-MB downloads
+// can be hundreds of times per second. Callers rendering UI updates should
+// throttle / coalesce.
 type ProgressFunc func(written, total int64)
 
 // DownloadAsset GETs url and writes the body to destPath.
@@ -21,8 +25,11 @@ type ProgressFunc func(written, total int64)
 // asset downloads redirect to S3-like URLs that don't accept the GitHub auth
 // header verbatim. For MVP, asset URLs are public.
 func DownloadAsset(url, destPath string, onProgress ProgressFunc) error {
-	client := &http.Client{Timeout: 5 * time.Minute}
-	req, err := http.NewRequest("GET", url, nil)
+	// 15min covers ~50MB downloads on connections as slow as ~500 Kbps. The
+	// caller's progress callback enables higher layers to surface per-Read stalls
+	// long before this hard cap matters.
+	client := &http.Client{Timeout: 15 * time.Minute}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}

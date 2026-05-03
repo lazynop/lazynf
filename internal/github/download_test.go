@@ -1,6 +1,7 @@
 package github
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -24,9 +25,11 @@ func TestDownloadAsset_WritesFileAndReportsProgress(t *testing.T) {
 
 	dest := filepath.Join(t.TempDir(), "JetBrainsMono.zip")
 	var lastWritten, lastTotal int64
+	var callCount int
 
 	err := DownloadAsset(srv.URL+"/releases/download/v3.4.0/JetBrainsMono.zip", dest,
 		func(written, total int64) {
+			callCount++
 			lastWritten = written
 			lastTotal = total
 		})
@@ -37,6 +40,10 @@ func TestDownloadAsset_WritesFileAndReportsProgress(t *testing.T) {
 	assert.Equal(t, int64(10000), info.Size())
 	assert.Equal(t, int64(10000), lastWritten)
 	assert.Equal(t, int64(10000), lastTotal)
+	// Callback must fire at least once. The 10KB fixture body fits in one
+	// io.Copy buffer (32KB) so multi-fire isn't structurally tested here;
+	// real downloads of 10-50MB Nerd Font zips will fire many times.
+	assert.GreaterOrEqual(t, callCount, 1, "onProgress should be called at least once")
 }
 
 func TestDownloadAsset_HTTPError_ReturnsError(t *testing.T) {
@@ -50,5 +57,5 @@ func TestDownloadAsset_HTTPError_ReturnsError(t *testing.T) {
 	assert.Error(t, err)
 
 	_, statErr := os.Stat(dest)
-	assert.True(t, os.IsNotExist(statErr), "no partial file should be left behind")
+	assert.True(t, errors.Is(statErr, os.ErrNotExist), "no partial file should be left behind")
 }
