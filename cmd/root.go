@@ -21,12 +21,13 @@ var (
 // NewRoot builds the root command tree.
 func NewRoot(version string) *cobra.Command {
 	root := &cobra.Command{
-		Use:           "vellum",
-		Short:         "Install Nerd Fonts from your terminal",
-		Long:          "Vellum installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
-		Version:       version,
-		SilenceErrors: true, // we render errors ourselves
-		SilenceUsage:  true,
+		Use:               "vellum",
+		Short:             "Install Nerd Fonts from your terminal",
+		Long:              "Vellum installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
+		Version:           version,
+		SilenceErrors:     true, // we render errors ourselves
+		SilenceUsage:      true,
+		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if flagQuiet && flagVerbose {
 				return fmt.Errorf("--quiet and --verbose are mutually exclusive")

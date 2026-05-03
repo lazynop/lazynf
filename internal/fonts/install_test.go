@@ -18,10 +18,13 @@ import (
 )
 
 // buildSampleZip writes a tiny zip with two font files at p.
-// Uses python3 (via os/exec) to avoid going through the Claude Edit/Write tools,
-// which normalize line endings and would corrupt binary fixtures.
+// Uses python3 instead of writing the binary inline so we don't ship a binary
+// blob in the repo and don't risk an editor mangling line endings.
 func buildSampleZip(t *testing.T, p, fontName string) {
 	t.Helper()
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 required to build zip fixture")
+	}
 	require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
 	cmd := exec.Command("python3", "-c",
 		`import sys, zipfile

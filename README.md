@@ -31,7 +31,7 @@ just build
 ./bin/vellum --help
 ```
 
-Requires Go 1.24+ and (optionally) [`just`](https://github.com/casey/just).
+Requires Go 1.25+ and (optionally) [`just`](https://github.com/casey/just).
 
 ## Status
 
