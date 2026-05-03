@@ -44,6 +44,23 @@ func TestExtractFonts_FilesArePlacedFlatInDest(t *testing.T) {
 	}
 }
 
+func TestExtractFonts_ContentMatchesArchive(t *testing.T) {
+	dest := t.TempDir()
+	_, err := ExtractFonts("testdata/sample.zip", dest)
+	require.NoError(t, err)
+
+	cases := map[string][]byte{
+		"JetBrainsMonoNerdFont-Regular.ttf":    []byte("FAKE_TTF_BYTES_REGULAR"),
+		"JetBrainsMonoNerdFont-Bold.ttf":       []byte("FAKE_TTF_BYTES_BOLD"),
+		"JetBrainsMonoNerdFontMono-Italic.otf": []byte("FAKE_OTF_BYTES"),
+	}
+	for name, want := range cases {
+		got, err := os.ReadFile(filepath.Join(dest, name))
+		require.NoError(t, err, name)
+		assert.Equal(t, want, got, name)
+	}
+}
+
 func TestExtractFonts_MissingArchive_ReturnsError(t *testing.T) {
 	_, err := ExtractFonts("testdata/does_not_exist.zip", t.TempDir())
 	assert.Error(t, err)

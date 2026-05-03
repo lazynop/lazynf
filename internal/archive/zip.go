@@ -20,6 +20,10 @@ import (
 //
 // Non-font entries (README, LICENSE, cheatsheets, nested directories) are
 // silently skipped. The destination dir must already exist.
+//
+// On error, the returned slice contains the basenames that were successfully
+// extracted before the failure; callers must decide whether to use or discard
+// those partial results (typically: discard and clean up the dest dir).
 func ExtractFonts(archivePath, destDir string) ([]string, error) {
 	r, err := zip.OpenReader(archivePath)
 	if err != nil {
@@ -57,10 +61,10 @@ func writeOne(f *zip.File, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
 
 	if _, err := io.Copy(dst, src); err != nil {
+		_ = dst.Close()
 		return err
 	}
-	return nil
+	return dst.Close() // surface flush/close errors (disk full, etc.)
 }
