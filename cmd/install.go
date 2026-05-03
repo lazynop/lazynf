@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/lazynop/vellum/internal/fontcache"
 	"github.com/lazynop/vellum/internal/fonts"
@@ -92,8 +93,11 @@ func newInstallCmd() *cobra.Command {
 						if b := bars[e.Font]; b != nil {
 							b.Fail(e.Err.Error())
 							delete(bars, e.Font)
+						} else if e.Font == "" && e.Err != nil {
+							// Soft error (e.g. fc-cache failure): no per-font bar, warn on stderr.
+							v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
 						}
-						// (final summary line is printed below)
+						// (per-font final summary line is printed below)
 					case fonts.EventCacheRefresh:
 						if showProgress {
 							spin = ui.NewSpinner("Refreshing font cache")
@@ -132,25 +136,14 @@ func newInstallCmd() *cobra.Command {
 
 func summarize(v *ui.Verbosity, res *fonts.InstallResult) {
 	if len(res.Successes) > 0 {
-		v.Info("%s installed: %s", ui.StyleSuccess.Render("✓"), formatList(res.Successes))
+		v.Info("%s installed: %s", ui.StyleSuccess.Render("✓"), strings.Join(res.Successes, ", "))
 	}
 	if len(res.Skipped) > 0 {
-		v.Info("%s already installed: %s", ui.StyleDim.Render("•"), formatList(res.Skipped))
+		v.Info("%s already installed: %s", ui.StyleDim.Render("•"), strings.Join(res.Skipped, ", "))
 	}
 	if len(res.Failures) > 0 {
 		for name, err := range res.Failures {
 			v.Errorf("%s %s: %s", ui.StyleFailure.Render("✗"), name, err.Error())
 		}
 	}
-}
-
-func formatList(xs []string) string {
-	out := ""
-	for i, s := range xs {
-		if i > 0 {
-			out += ", "
-		}
-		out += s
-	}
-	return out
 }
