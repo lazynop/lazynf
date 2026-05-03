@@ -1,7 +1,6 @@
 package xdg
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -66,8 +65,5 @@ func TestFallback_NoHomeNoXDG(t *testing.T) {
 	// On a stripped environment, we shouldn't crash. Keep a safe fallback.
 	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "")
-	got := DataHome()
-	// Should default to a tmp-ish location rather than empty string.
-	assert.NotEmpty(t, got)
-	_ = os.TempDir() // ensure os is imported (used implicitly in fallback)
+	assert.NotEmpty(t, DataHome())
 }

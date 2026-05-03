@@ -20,7 +20,7 @@ func DataHome() string {
 	if h := os.Getenv("HOME"); h != "" {
 		return filepath.Join(h, ".local", "share")
 	}
-	return filepath.Join(os.TempDir(), "share")
+	return filepath.Join(os.TempDir(), appName, "share")
 }
 
 // CacheHome returns the XDG cache home directory.
@@ -31,7 +31,7 @@ func CacheHome() string {
 	if h := os.Getenv("HOME"); h != "" {
 		return filepath.Join(h, ".cache")
 	}
-	return filepath.Join(os.TempDir(), "cache")
+	return filepath.Join(os.TempDir(), appName, "cache")
 }
 
 // VellumDataDir is $XDG_DATA_HOME/vellum.
