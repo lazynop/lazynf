@@ -138,24 +138,28 @@ func RenderInstalledTable(fonts []string, installed InstalledSet) string {
 		return "(no fonts installed)"
 	}
 
+	// cellStyle is the base for every cell: 1 char of horizontal padding so
+	// content doesn't touch the borders.
+	cellStyle := lipgloss.NewStyle().Padding(0, 1)
+
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
 		BorderStyle(lipgloss.NewStyle()).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
-				return StyleBold
+				return cellStyle.Bold(true)
 			}
 			if col == 1 {
 				// Release column: color by value.
 				name := fonts[row]
 				if entry, ok := installed[name]; ok {
 					if entry.Release == state.ReleaseImported {
-						return StyleWarn
+						return cellStyle.Inherit(StyleWarn)
 					}
-					return StyleSuccess
+					return cellStyle.Inherit(StyleSuccess)
 				}
 			}
-			return lipgloss.NewStyle()
+			return cellStyle
 		}).
 		Headers("FONT", "RELEASE", "INSTALLED AT")
 
