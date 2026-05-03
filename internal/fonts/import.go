@@ -95,7 +95,7 @@ func Import(ctx context.Context, p ImportParams, opts ImportOptions) (*ImportRes
 		// Determine which release to record.
 		release := state.ReleaseImported
 		if p.Detect {
-			detected, detErr := detectRelease(ctx, name, installDir, localFiles, cat.Release, p)
+			detected, detErr := detectRelease(name, installDir, localFiles, cat.Release, p)
 			if detErr != nil {
 				// Detect failure is non-fatal: fall back to sentinel.
 				release = state.ReleaseImported
@@ -168,8 +168,9 @@ func listFontFiles(dir string) ([]string, error) {
 // detectRelease downloads the latest release zip, extracts it, then compares
 // SHA-256 hashes of every font file against the local files. If all hashes
 // match, it returns the catalog release tag. Otherwise it returns ReleaseImported.
+//
+// TODO: thread ctx through DownloadAsset once it has a context-aware variant.
 func detectRelease(
-	ctx context.Context,
 	name, installDir string,
 	localFiles []string,
 	catRelease string,
