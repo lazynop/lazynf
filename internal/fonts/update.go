@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 
 	"github.com/lazynop/vellum/internal/fontcache"
@@ -106,9 +107,7 @@ func Update(ctx context.Context, p UpdateParams, opts UpdateOptions) (*UpdateRes
 	}
 
 	res.Updated = installRes.Successes
-	for name, ferr := range installRes.Failures {
-		res.Failures[name] = ferr
-	}
+	maps.Copy(res.Failures, installRes.Failures)
 	// installRes.Skipped should be empty when Force=true; ignore it.
 
 	return res, nil
