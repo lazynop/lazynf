@@ -43,6 +43,7 @@ func NewRoot(version string) *cobra.Command {
 	root.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "extra diagnostic output on stderr")
 
 	root.AddCommand(newInstallCmd())
+	root.AddCommand(newImportCmd())
 	root.AddCommand(newListCmd())
 	root.AddCommand(newSearchCmd())
 	root.AddCommand(newCacheCmd())

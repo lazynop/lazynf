@@ -18,6 +18,12 @@ import (
 // in a non-backward-compatible way.
 const CurrentSchemaVersion = 1
 
+// ReleaseImported is the sentinel value stored in InstalledFont.Release when a
+// font was adopted via "vellum import" without version detection. A future
+// "vellum update" will always refresh it because no real release tag matches
+// this string.
+const ReleaseImported = "imported"
+
 // Manifest is the top-level on-disk structure.
 type Manifest struct {
 	SchemaVersion int                      `json:"schema_version"`

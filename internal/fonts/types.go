@@ -1,6 +1,10 @@
 package fonts
 
-import "time"
+import (
+	"time"
+
+	"github.com/lazynop/vellum/internal/github"
+)
 
 // Event is a discrete state transition during install, surfaced via OnEvent
 // callback so the UI layer can update its view without polling.
@@ -15,6 +19,10 @@ const (
 	EventInstallSuccess                  // font fully installed
 	EventInstallSkipped                  // already installed at same release
 	EventInstallError                    // failed (Err is non-nil)
+	EventImportStart                     // started processing one font in import
+	EventImportSuccess                   // font successfully recorded in state
+	EventImportSkipped                   // font already in state and --force not set
+	EventImportError                     // per-font import failure (Err is non-nil)
 )
 
 type Event struct {
@@ -56,4 +64,34 @@ type InstalledFontView struct {
 	Name        string
 	Release     string
 	InstalledAt time.Time
+}
+
+// ImportParams are the dependencies and paths the import pipeline needs.
+type ImportParams struct {
+	Names []string // fonts to import; empty + All=true means scan FontDir
+
+	All    bool // if true and Names is empty, scan FontDir for matching Nerd Font subdirs
+	Detect bool // if true, hash-compare with latest release to detect actual version
+	Force  bool // re-import even if already in state
+
+	FontDir      string // base dir containing <name>/ subdirs
+	StatePath    string // path to state.json
+	CatalogPath  string // path to catalog.json
+	AssetURLBase string // for --detect mode downloads
+
+	GitHub *github.Client
+}
+
+// ImportOptions captures caller-tunable behaviour for a single Import call.
+type ImportOptions struct {
+	// OnEvent is called once per state transition. May be nil.
+	OnEvent func(Event)
+}
+
+// ImportResult summarises the outcome of a batch import.
+type ImportResult struct {
+	Imported []string          // newly added or re-imported font names
+	Skipped  []string          // already in state and --force not set
+	Failures map[string]error  // font name → error
+	Details  map[string]string // per-font detected release ("v3.4.0" or "imported")
 }

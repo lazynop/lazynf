@@ -4,6 +4,9 @@ All notable changes to Vellum are documented here. Format follows [Keep a Change
 
 ## [Unreleased]
 
+### Added
+- `vellum import [<font>...]` adopts Nerd Fonts already present on disk (e.g. installed by getnf or manually) into Vellum's state manifest. With `--detect`, hashes the on-disk files against the latest release to record the actual upstream tag; without `--detect`, marks the release as `imported` (a future `vellum update` will refresh it). `--all` scans the font dir and imports every subdirectory whose name matches a catalog entry.
+
 ## [0.1.0] - YYYY-MM-DD
 
 ### Added
