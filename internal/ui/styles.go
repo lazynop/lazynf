@@ -1,6 +1,6 @@
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // Centralized palette so all CLI output is styled consistently.
 // Keep simple: a handful of named styles, no theming surface yet.
