@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/github"
 	"github.com/lazynop/vellum/internal/xdg"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +13,7 @@ func newSearchCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			v := Verbosity()
-			gh := github.NewClient()
+			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
 			cat, err := fonts.ResolveCatalog(gh, xdg.CatalogFile())

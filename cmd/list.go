@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/github"
 	"github.com/lazynop/vellum/internal/state"
 	"github.com/lazynop/vellum/internal/ui"
 	"github.com/lazynop/vellum/internal/xdg"
@@ -35,7 +34,7 @@ func newListCmd() *cobra.Command {
 				return nil
 			}
 
-			gh := github.NewClient()
+			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
 			cat, err := fonts.ResolveCatalog(gh, xdg.CatalogFile())

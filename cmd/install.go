@@ -5,9 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/vellum/internal/fontcache"
 	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/github"
 	"github.com/lazynop/vellum/internal/ui"
 	"github.com/lazynop/vellum/internal/xdg"
 	"github.com/spf13/cobra"
@@ -32,7 +30,7 @@ func newInstallCmd() *cobra.Command {
 				fontDir = xdg.DefaultFontDir()
 			}
 
-			gh := github.NewClient()
+			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
 			params := fonts.InstallParams{
@@ -42,8 +40,8 @@ func newInstallCmd() *cobra.Command {
 				CatalogPath:  xdg.CatalogFile(),
 				ArchivesDir:  xdg.ArchivesDir(),
 				GitHub:       gh,
-				AssetURLBase: fonts.DefaultAssetURLBase,
-				Refresher:    fontcache.Default(),
+				AssetURLBase: assetURLBase(),
+				Refresher:    refresher(),
 			}
 
 			showProgress := v.ShouldShowProgress()
