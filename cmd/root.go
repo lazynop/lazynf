@@ -44,6 +44,7 @@ func NewRoot(version string) *cobra.Command {
 
 	root.AddCommand(newInstallCmd())
 	root.AddCommand(newImportCmd())
+	root.AddCommand(newUpdateCmd())
 	root.AddCommand(newListCmd())
 	root.AddCommand(newSearchCmd())
 	root.AddCommand(newCacheCmd())

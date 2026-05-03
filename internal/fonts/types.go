@@ -3,6 +3,7 @@ package fonts
 import (
 	"time"
 
+	"github.com/lazynop/vellum/internal/fontcache"
 	"github.com/lazynop/vellum/internal/github"
 )
 
@@ -94,4 +95,46 @@ type ImportResult struct {
 	Skipped  []string          // already in state and --force not set
 	Failures map[string]error  // font name → error
 	Details  map[string]string // per-font detected release ("v3.4.0" or "imported")
+}
+
+// UpdateParams are the dependencies and paths the update pipeline needs.
+// Callers (cmd/update.go and the future TUI) construct these once per call.
+type UpdateParams struct {
+	// Names is the set of fonts to consider; empty means all installed.
+	Names []string
+
+	FontDir     string // base dir under which <name>/ subdirs live
+	StatePath   string // path to state.json
+	CatalogPath string // path to catalog.json
+	ArchivesDir string // dir for kept archives (only used if KeepArchive)
+
+	GitHub       *github.Client
+	AssetURLBase string // e.g. "https://github.com/ryanoasis/nerd-fonts/releases/download"
+	Refresher    fontcache.Refresher
+}
+
+// UpdateOptions captures caller-tunable behaviour for a single Update call.
+type UpdateOptions struct {
+	// Force, if true, re-downloads fonts already at the current release.
+	Force bool
+
+	// KeepArchive, if true, moves the downloaded zip to the archives cache dir
+	// instead of deleting it.
+	KeepArchive bool
+
+	// SkipCacheRefresh, if true, suppresses the final fc-cache invocation.
+	SkipCacheRefresh bool
+
+	// OnProgress is called frequently during downloads (per-read). May be nil.
+	OnProgress func(font string, written, total int64)
+
+	// OnEvent is called once per state transition. May be nil.
+	OnEvent func(Event)
+}
+
+// UpdateResult summarises the outcome of a batch update.
+type UpdateResult struct {
+	Updated      []string         // fonts that were re-downloaded and refreshed
+	AlreadyFresh []string         // fonts already at the latest release (not re-downloaded)
+	Failures     map[string]error // per-font failures (e.g. not installed, network error)
 }

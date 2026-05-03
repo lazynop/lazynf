@@ -9,6 +9,7 @@ All notable changes to Vellum are documented here. Format follows [Keep a Change
 - `vellum list --installed` renders a bordered table on a TTY (font / release / installed at). Pipe / redirected output is `<name>\t<release>` per line for scripts.
 
 ### Added
+- `vellum update [<font>...]` re-downloads installed fonts whose recorded release no longer matches the upstream catalog (or were imported with the `imported` sentinel). With no arguments, updates everything stale; with `--force`, refreshes even fonts already at the latest release.
 - `vellum import [<font>...]` adopts Nerd Fonts already present on disk (e.g. installed by getnf or manually) into Vellum's state manifest. With `--detect`, hashes the on-disk files against the latest release to record the actual upstream tag; without `--detect`, marks the release as `imported` (a future `vellum update` will refresh it). `--all` scans the font dir and imports every subdirectory whose name matches a catalog entry.
 
 ## [0.1.0] - YYYY-MM-DD
