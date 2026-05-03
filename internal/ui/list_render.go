@@ -50,19 +50,16 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 	}
 
 	colWidth := nameWidth + statusFieldWidth + colPadding
-	numCols := termWidth / colWidth
-	if numCols < 1 {
-		numCols = 1
-	}
+	numCols := max(termWidth/colWidth, 1)
 
 	numFonts := len(fonts)
 	numRows := (numFonts + numCols - 1) / numCols
 
 	// Build each column as a slice of strings (one per row).
 	columns := make([]string, numCols)
-	for col := 0; col < numCols; col++ {
+	for col := range numCols {
 		var sb strings.Builder
-		for row := 0; row < numRows; row++ {
+		for row := range numRows {
 			// Column-major order: top-to-bottom then left-to-right.
 			idx := col*numRows + row
 			if idx >= numFonts {
