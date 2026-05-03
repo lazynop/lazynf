@@ -1,9 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"os"
+
+	"github.com/lazynop/vellum/cmd"
+)
 
 var version = "0.0.1-dev"
 
 func main() {
-	fmt.Println("vellum", version)
+	root := cmd.NewRoot(version)
+	if err := root.Execute(); err != nil {
+		os.Exit(cmd.Exit(err))
+	}
 }
