@@ -3,6 +3,7 @@ package fonts
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -20,6 +21,9 @@ func newMockGitHub(t *testing.T, tag string, fonts []string) *httptest.Server {
 		_, _ = w.Write([]byte(`{"tag_name":"` + tag + `"}`))
 	})
 	mux.HandleFunc("/repos/ryanoasis/nerd-fonts/contents/patched-fonts", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("ref") != "master" {
+			t.Errorf("expected ?ref=master, got %q", r.URL.Query().Get("ref"))
+		}
 		w.WriteHeader(http.StatusOK)
 		body := "["
 		for i, f := range fonts {
@@ -100,4 +104,27 @@ func TestResolveCatalog_CachedButStale_Refetches(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "v3.4.0", cat.Release)
 	assert.Equal(t, []string{"NewFont"}, cat.Fonts)
+}
+
+func TestResolveCatalog_CorruptCache_RefetchesAndOverwrites(t *testing.T) {
+	srv := newMockGitHub(t, "v3.4.0", []string{"FiraCode"})
+	defer srv.Close()
+
+	gh := github.NewClient()
+	gh.BaseURL = srv.URL
+	catPath := filepath.Join(t.TempDir(), "catalog.json")
+
+	// Write a corrupt cache file.
+	require.NoError(t, os.WriteFile(catPath, []byte("{not json"), 0o644))
+
+	cat, err := ResolveCatalog(gh, catPath)
+	require.NoError(t, err, "corrupt cache must self-heal, not fail")
+	assert.Equal(t, "v3.4.0", cat.Release)
+	assert.Equal(t, []string{"FiraCode"}, cat.Fonts)
+
+	// Confirm overwrite happened.
+	loaded, err := cache.Load(catPath)
+	require.NoError(t, err)
+	require.NotNil(t, loaded)
+	assert.Equal(t, "v3.4.0", loaded.Release)
 }

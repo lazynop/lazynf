@@ -19,10 +19,10 @@ func ResolveCatalog(gh *github.Client, catalogPath string) (*cache.Catalog, erro
 		return nil, fmt.Errorf("resolve catalog tag: %w", err)
 	}
 
-	cached, err := cache.Load(catalogPath)
-	if err != nil {
-		return nil, fmt.Errorf("load catalog cache: %w", err)
-	}
+	// Treat a corrupt cache file the same as a missing one: re-fetch and
+	// overwrite. The user gets a working tool instead of a hard error
+	// requiring them to know about `vellum cache clean`.
+	cached, _ := cache.Load(catalogPath)
 	if cached.IsFreshFor(tag) {
 		return cached, nil
 	}
