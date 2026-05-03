@@ -41,6 +41,7 @@ func Load(path string) (*Catalog, error) {
 
 // IsFreshFor returns true if the cached catalog corresponds to the given upstream
 // release tag — i.e., it does not need refreshing.
+// Safe to call on a nil *Catalog (returns false).
 func (c *Catalog) IsFreshFor(release string) bool {
 	return c != nil && c.Release == release
 }

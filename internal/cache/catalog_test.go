@@ -42,7 +42,7 @@ func TestSave_AtomicViaTempRename(t *testing.T) {
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
-	assert.Equal(t, "catalog.json", entries[0].Name())
+	assert.Equal(t, "catalog.json", entries[0].Name(), "no .tmp file should remain after Save")
 }
 
 func TestSave_CreatesParentDir(t *testing.T) {
@@ -57,6 +57,11 @@ func TestIsFreshFor(t *testing.T) {
 	cat := &Catalog{Release: "v3.4.0"}
 	assert.True(t, cat.IsFreshFor("v3.4.0"))
 	assert.False(t, cat.IsFreshFor("v3.5.0"))
+}
+
+func TestIsFreshFor_NilCatalog(t *testing.T) {
+	var cat *Catalog
+	assert.False(t, cat.IsFreshFor("v3.4.0"), "nil catalog is never fresh")
 }
 
 func TestLoad_CorruptJSON_ReturnsError(t *testing.T) {
