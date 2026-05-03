@@ -34,8 +34,9 @@ func TestRenderCatalogGrid_FitsTerminalWidth(t *testing.T) {
 		"Alpha", "Bravo", "Charlie", "Delta", "Echo",
 		"Foxtrot", "Golf", "Hotel", "India", "Juliet",
 	}
-	// termWidth 80: longest name is "Charlie" (7). colWidth = 7+12+4 = 23.
-	// numCols = 80/23 = 3.
+	// termWidth 80: longest name is "Charlie" (7). colWidth = 7+4 = 11.
+	// numCols = 80/11 = 7, numRows = ceil(10/7) = 2.
+	// Output: 2 grid rows + 1 blank line + 1 legend line = 4 lines total.
 	termWidth := 80
 	installed := ui.InstalledSet{}
 
@@ -44,8 +45,12 @@ func TestRenderCatalogGrid_FitsTerminalWidth(t *testing.T) {
 
 	plain := stripANSI(out)
 	lines := strings.Split(plain, "\n")
-	// With 10 fonts and 3 cols: numRows = ceil(10/3) = 4.
-	assert.Equal(t, 4, len(lines), "expected 4 rows for 10 fonts in 3 columns")
+	// 2 grid rows + blank + legend = 4 lines.
+	assert.Equal(t, 4, len(lines), "expected 2 grid rows + blank + legend = 4 lines")
+	// Grid fits: rows × cols >= numFonts.
+	numRows := 2
+	numCols := 7
+	assert.GreaterOrEqual(t, numRows*numCols, len(fonts), "grid must accommodate all fonts")
 }
 
 func TestRenderCatalogGrid_InstalledMarkedWithSuccess(t *testing.T) {
@@ -55,12 +60,13 @@ func TestRenderCatalogGrid_InstalledMarkedWithSuccess(t *testing.T) {
 	}
 
 	out := ui.RenderCatalogGrid(fonts, installed, 120)
-	// The checkmark and release tag must appear somewhere in the output.
-	assert.Contains(t, out, "✓v3.4.0", "installed font should show ✓ + release")
-	// Hack and JetBrainsMono are not installed — no checkmark for them.
+	// Font name must appear in the output.
+	assert.Contains(t, out, "FiraCode", "installed font name must appear in output")
+	// The name should be rendered with an ANSI green sequence (color code 32).
+	assert.Regexp(t, `\x1b\[[^m]*32[^m]*m[^\x1b]*FiraCode`, out, "FiraCode name should be styled green")
+	// No inline checkmark/release tag in cells.
 	plain := stripANSI(out)
-	// Count occurrences of ✓ — should be exactly 1.
-	assert.Equal(t, 1, strings.Count(plain, "✓"), "only one font is installed")
+	assert.NotContains(t, plain, "✓", "cells must not contain inline checkmark indicators")
 }
 
 func TestRenderCatalogGrid_ImportedMarkedWithWarn(t *testing.T) {
@@ -70,11 +76,39 @@ func TestRenderCatalogGrid_ImportedMarkedWithWarn(t *testing.T) {
 	}
 
 	out := ui.RenderCatalogGrid(fonts, installed, 120)
-	assert.Contains(t, out, "✓imported", "imported font should show ✓imported")
-
-	// Verify the indicator is present exactly once.
+	// Font name must appear in the output.
+	assert.Contains(t, out, "Hack", "imported font name must appear in output")
+	// The name should be rendered with an ANSI yellow sequence (color code 33).
+	assert.Regexp(t, `\x1b\[[^m]*33[^m]*m[^\x1b]*Hack`, out, "Hack name should be styled yellow")
+	// No inline checkmark/release tag in cells.
 	plain := stripANSI(out)
-	assert.Equal(t, 1, strings.Count(plain, "✓"), "only one font is marked")
+	assert.NotContains(t, plain, "✓", "cells must not contain inline checkmark indicators")
+}
+
+func TestRenderCatalogGrid_HasLegendInTTYOutput(t *testing.T) {
+	fonts := []string{"Agave", "FiraCode", "Hack"}
+	installed := ui.InstalledSet{}
+
+	out := ui.RenderCatalogGrid(fonts, installed, 120)
+	plain := stripANSI(out)
+
+	// Legend must be present.
+	assert.Contains(t, plain, "Legend:", "output must contain a legend line")
+
+	// Legend must appear after all font names — it should be in the last two
+	// lines (blank line then legend line).
+	lines := strings.Split(plain, "\n")
+	require.GreaterOrEqual(t, len(lines), 2, "output must have at least 2 lines")
+
+	lastLines := strings.Join(lines[len(lines)-2:], "\n")
+	assert.Contains(t, lastLines, "Legend:", "legend must appear at the bottom of the output")
+
+	// Font names must appear before the legend.
+	legendIdx := strings.Index(plain, "Legend:")
+	for _, name := range fonts {
+		nameIdx := strings.Index(plain, name)
+		assert.Less(t, nameIdx, legendIdx, "font name %q must appear before the legend", name)
+	}
 }
 
 // ---- Installed table tests ----

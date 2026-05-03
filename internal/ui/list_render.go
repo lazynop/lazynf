@@ -20,10 +20,6 @@ import (
 type InstalledSet = map[string]state.InstalledFont
 
 const (
-	// statusFieldWidth is the fixed width reserved for the status indicator
-	// (e.g. "✓v3.4.0" or "✓imported"). 12 chars covers the longest case.
-	statusFieldWidth = 12
-
 	// colPadding is the number of spaces appended after each cell.
 	colPadding = 4
 
@@ -36,6 +32,13 @@ const (
 //
 // fonts must be sorted (alphabetical). installed maps font names present in the
 // manifest; a nil map is treated as empty (no installed fonts).
+//
+// Each cell is just the font name, colored by install status:
+//   - green/bold if installed with a real release tag
+//   - yellow/bold if installed with the ReleaseImported sentinel
+//   - plain if not installed
+//
+// A one-line legend is appended after the grid.
 func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) string {
 	if len(fonts) == 0 {
 		return ""
@@ -49,7 +52,7 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 		}
 	}
 
-	colWidth := nameWidth + statusFieldWidth + colPadding
+	colWidth := nameWidth + colPadding
 	numCols := max(termWidth/colWidth, 1)
 
 	numFonts := len(fonts)
@@ -77,51 +80,36 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 		columns[col] = sb.String()
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, columns...)
+	grid := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
+
+	// Legend line.
+	legend := StyleDim.Render("Legend: ") +
+		StyleSuccess.Render("green") +
+		StyleDim.Render(" = installed   ") +
+		StyleWarn.Render("yellow") +
+		StyleDim.Render(" = imported   (use 'vellum list --installed' for details)")
+
+	return grid + "\n\n" + legend
 }
 
 // renderCell returns a single grid cell of exactly colWidth visible characters.
+// The cell is just the font name, colored by install status (no inline status text).
 func renderCell(name string, entry state.InstalledFont, isInstalled bool, nameWidth, colWidth int) string {
 	var sb strings.Builder
 
-	// Font name part.
+	// Font name — colored by install status.
 	if isInstalled {
-		sb.WriteString(StyleBold.Render(name))
+		if entry.Release == state.ReleaseImported {
+			sb.WriteString(StyleWarn.Render(name))
+		} else {
+			sb.WriteString(StyleSuccess.Render(name))
+		}
 	} else {
 		sb.WriteString(name)
 	}
 
-	// Pad name to nameWidth.
-	namePad := nameWidth - utf8.RuneCountInString(name)
-	if namePad > 0 {
-		sb.WriteString(strings.Repeat(" ", namePad))
-	}
-
-	// Status indicator.
-	statusText := ""
-	if isInstalled {
-		if entry.Release == state.ReleaseImported {
-			indicator := "✓imported"
-			statusText = StyleWarn.Render(indicator)
-		} else {
-			indicator := "✓" + entry.Release
-			statusText = StyleSuccess.Render(indicator)
-		}
-	}
-
-	sb.WriteString(statusText)
-
-	// Compute the visible width consumed so far (name + status), then pad to colWidth.
-	visibleStatusWidth := 0
-	if isInstalled {
-		if entry.Release == state.ReleaseImported {
-			visibleStatusWidth = utf8.RuneCountInString("✓imported")
-		} else {
-			visibleStatusWidth = utf8.RuneCountInString("✓" + entry.Release)
-		}
-	}
-	used := nameWidth + visibleStatusWidth
-	remaining := colWidth - used
+	// Pad to colWidth (name occupies nameWidth visible chars).
+	remaining := colWidth - utf8.RuneCountInString(name)
 	if remaining > 0 {
 		sb.WriteString(strings.Repeat(" ", remaining))
 	}

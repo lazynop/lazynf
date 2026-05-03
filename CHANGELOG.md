@@ -6,6 +6,7 @@ All notable changes to Vellum are documented here. Format follows [Keep a Change
 
 ### Changed
 - `vellum list` now renders a multi-column color-coded grid on a TTY, with installed fonts marked by a green ✓ + release tag and imported fonts marked yellow. Pipe / redirected output stays plain one-per-line for scripts.
+- `vellum list` catalog grid no longer prints inline release tags. Installed fonts are highlighted by color (green = installed, yellow = imported), and a one-line legend below the grid points to `vellum list --installed` for full details.
 - `vellum list --installed` renders a bordered table on a TTY (font / release / installed at). Pipe / redirected output is `<name>\t<release>` per line for scripts.
 
 ### Added
