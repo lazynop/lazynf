@@ -56,10 +56,3 @@ func Suggest(all []string, query string, limit int) []string {
 	}
 	return prefixHits
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

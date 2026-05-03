@@ -26,9 +26,6 @@ type Event struct {
 
 // InstallOptions captures everything the caller can tune for one Install call.
 type InstallOptions struct {
-	// FontDir overrides the install destination root. Empty = use xdg.DefaultFontDir().
-	FontDir string
-
 	// Force, if true, overwrites non-vellum-managed dirs and reinstalls already-current fonts.
 	Force bool
 

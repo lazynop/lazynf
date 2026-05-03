@@ -92,8 +92,9 @@ func Install(ctx context.Context, p InstallParams, opts InstallOptions) (*Instal
 
 		if action == ActionReinstall {
 			if err := os.RemoveAll(installDir); err != nil {
-				res.Failures[name] = fmt.Errorf("clean previous install dir: %w", err)
-				emit(opts.OnEvent, Event{Font: name, Kind: EventInstallError, Err: err})
+				wrapped := fmt.Errorf("clean previous install dir: %w", err)
+				res.Failures[name] = wrapped
+				emit(opts.OnEvent, Event{Font: name, Kind: EventInstallError, Err: wrapped})
 				continue
 			}
 		}

@@ -83,6 +83,9 @@ func (m progressModel) View() tea.View {
 	if m.note != "" {
 		suffix = " " + StyleDim.Render(m.note)
 	}
+	if m.finished && !m.ok && m.reason != "" {
+		suffix = " — " + m.reason
+	}
 	return tea.NewView(fmt.Sprintf("%s %s %s%s", icon, m.label, m.bar.ViewAs(m.pct), suffix))
 }
 
