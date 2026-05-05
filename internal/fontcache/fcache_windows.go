@@ -8,7 +8,7 @@ import (
 )
 
 // ErrUnsupported indicates Windows font registration is not yet implemented.
-var ErrUnsupported = errors.New("vellum: Windows font cache refresh not implemented")
+var ErrUnsupported = errors.New("lazynf: Windows font cache refresh not implemented")
 
 type windowsRefresher struct{}
 

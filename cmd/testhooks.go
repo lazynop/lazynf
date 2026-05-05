@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/lazynop/vellum/internal/fontcache"
-	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/github"
+	"github.com/lazynop/lazynf/internal/fontcache"
+	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/github"
 )
 
 // These overrides exist for E2E tests under cmd/ that need to swap network/IO

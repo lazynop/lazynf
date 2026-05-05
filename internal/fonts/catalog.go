@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lazynop/vellum/internal/cache"
-	"github.com/lazynop/vellum/internal/github"
+	"github.com/lazynop/lazynf/internal/cache"
+	"github.com/lazynop/lazynf/internal/github"
 )
 
 // ResolveCatalog returns a fresh-or-cached catalog using getnf-style invalidation:
@@ -21,7 +21,7 @@ func ResolveCatalog(gh *github.Client, catalogPath string) (*cache.Catalog, erro
 
 	// Treat a corrupt cache file the same as a missing one: re-fetch and
 	// overwrite. The user gets a working tool instead of a hard error
-	// requiring them to know about `vellum cache clean`.
+	// requiring them to know about `lazynf cache clean`.
 	cached, _ := cache.Load(catalogPath)
 	if cached.IsFreshFor(tag) {
 		return cached, nil

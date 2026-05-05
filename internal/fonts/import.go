@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lazynop/vellum/internal/archive"
-	"github.com/lazynop/vellum/internal/github"
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/internal/archive"
+	"github.com/lazynop/lazynf/internal/github"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
-// Import records fonts that already exist on disk into Vellum's state manifest.
+// Import records fonts that already exist on disk into lazynf's state manifest.
 // It does NOT write or modify any font files. No fc-cache invocation is needed
 // because the OS font cache is already valid for files that were already present.
 //
@@ -183,7 +183,7 @@ func detectRelease(
 	}
 
 	// Download the latest release zip.
-	tmpDir, err := os.MkdirTemp("", "vellum-detect-*")
+	tmpDir, err := os.MkdirTemp("", "lazynf-detect-*")
 	if err != nil {
 		return state.ReleaseImported, fmt.Errorf("create tempdir: %w", err)
 	}

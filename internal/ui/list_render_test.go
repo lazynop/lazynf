@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lazynop/vellum/internal/state"
-	"github.com/lazynop/vellum/internal/ui"
+	"github.com/lazynop/lazynf/internal/state"
+	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

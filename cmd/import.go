@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/ui"
-	"github.com/lazynop/vellum/internal/xdg"
+	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/ui"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -20,9 +20,9 @@ func newImportCmd() *cobra.Command {
 	)
 	c := &cobra.Command{
 		Use:   "import [<font>...]",
-		Short: "Adopt fonts already on disk into Vellum's state manifest",
+		Short: "Adopt fonts already on disk into lazynf's state manifest",
 		Long: "Use this to register fonts that were installed by another tool " +
-			"(getnf, manual download, package manager) so Vellum can later list, " +
+			"(getnf, manual download, package manager) so lazynf can later list, " +
 			"update, or remove them.\n\n" +
 			"With --all, scans the font directory and imports every subdirectory " +
 			"whose name matches a Nerd Fonts catalog entry.",

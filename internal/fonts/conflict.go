@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
 // Action is the install pipeline's decision after looking at on-disk + state.
@@ -27,7 +27,7 @@ const (
 //   - (ActionInstall, nil)              — fresh install, dir does not exist
 //   - (ActionReinstall, nil)            — different release, OR --force
 //   - (ActionSkip, ErrAlreadyInstalled) — same release, no force; caller logs and continues
-//   - (ActionAbort, ErrConflict)        — dir exists, not vellum-managed, no force
+//   - (ActionAbort, ErrConflict)        — dir exists, not lazynf-managed, no force
 func DetectConflict(m *state.Manifest, fontName, installDir, currentRelease string, force bool) (Action, error) {
 	dirExists := pathExists(installDir)
 	managed, isManaged := m.Installed[fontName]

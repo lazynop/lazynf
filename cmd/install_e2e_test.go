@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lazynop/vellum/cmd"
-	"github.com/lazynop/vellum/internal/fontcache"
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/cmd"
+	"github.com/lazynop/lazynf/internal/fontcache"
+	"github.com/lazynop/lazynf/internal/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +62,7 @@ with zipfile.ZipFile(sys.argv[1], "w") as z:
 	cmd.SetTestRefresher(&fontcache.FakeRefresher{})
 	defer cmd.ResetTestOverrides()
 
-	// Run `vellum install FiraCode --no-cache-refresh`.
+	// Run `lazynf install FiraCode --no-cache-refresh`.
 	root := cmd.NewRoot("test")
 	root.SetArgs([]string{"install", "FiraCode", "--no-cache-refresh"})
 	var stdout, stderr bytes.Buffer
@@ -73,7 +73,7 @@ with zipfile.ZipFile(sys.argv[1], "w") as z:
 	require.NoError(t, err, "stderr=%s", stderr.String())
 
 	// State should record FiraCode.
-	m, err := state.Load(filepath.Join(tmp, "data", "vellum", "state.json"))
+	m, err := state.Load(filepath.Join(tmp, "data", "lazynf", "state.json"))
 	require.NoError(t, err)
 	require.Contains(t, m.Installed, "FiraCode")
 	assert.Equal(t, "v3.4.0", m.Installed["FiraCode"].Release)

@@ -1,4 +1,4 @@
-# Vellum
+# lazynf
 
 Install [Nerd Fonts](https://www.nerdfonts.com/font-downloads) from your terminal.
 
@@ -7,28 +7,28 @@ Install [Nerd Fonts](https://www.nerdfonts.com/font-downloads) from your termina
 ## Install
 
 ```bash
-go install github.com/lazynop/vellum@latest
+go install github.com/lazynop/lazynf@latest
 ```
 
 ## Usage
 
 ```bash
-vellum install JetBrainsMono FiraCode    # install one or more fonts
-vellum list                              # show available fonts
-vellum list --installed                  # show what's installed
-vellum search mono                       # find fonts by substring
-vellum cache clean                       # clear catalog cache
+lazynf install JetBrainsMono FiraCode    # install one or more fonts
+lazynf list                              # show available fonts
+lazynf list --installed                  # show what's installed
+lazynf search mono                       # find fonts by substring
+lazynf cache clean                       # clear catalog cache
 ```
 
-Run `vellum --help` for full options.
+Run `lazynf --help` for full options.
 
 ## Build from source
 
 ```bash
-git clone https://github.com/lazynop/vellum
-cd vellum
+git clone https://github.com/lazynop/lazynf
+cd lazynf
 just build
-./bin/vellum --help
+./bin/lazynf --help
 ```
 
 Requires Go 1.25+ and (optionally) [`just`](https://github.com/casey/just).

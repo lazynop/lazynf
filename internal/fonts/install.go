@@ -11,11 +11,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/lazynop/vellum/internal/archive"
-	"github.com/lazynop/vellum/internal/cache"
-	"github.com/lazynop/vellum/internal/fontcache"
-	"github.com/lazynop/vellum/internal/github"
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/internal/archive"
+	"github.com/lazynop/lazynf/internal/cache"
+	"github.com/lazynop/lazynf/internal/fontcache"
+	"github.com/lazynop/lazynf/internal/github"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
 // InstallParams are dependencies and paths the install pipeline needs.
@@ -151,7 +151,7 @@ func installOne(name, release, installDir string, p InstallParams, opts InstallO
 		return nil, fmt.Errorf("mkdir %s: %w", installDir, err)
 	}
 
-	tmpDir, err := os.MkdirTemp("", "vellum-dl-*")
+	tmpDir, err := os.MkdirTemp("", "lazynf-dl-*")
 	if err != nil {
 		return nil, fmt.Errorf("create tempdir: %w", err)
 	}

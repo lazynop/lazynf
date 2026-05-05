@@ -6,10 +6,10 @@ import (
 	"sort"
 
 	cterm "github.com/charmbracelet/x/term"
-	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/state"
-	"github.com/lazynop/vellum/internal/ui"
-	"github.com/lazynop/vellum/internal/xdg"
+	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/state"
+	"github.com/lazynop/lazynf/internal/ui"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 

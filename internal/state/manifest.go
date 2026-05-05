@@ -1,6 +1,6 @@
-// Package state manages Vellum's persistent manifest of installed fonts.
+// Package state manages lazynf's persistent manifest of installed fonts.
 //
-// The manifest is stored as JSON at $XDG_DATA_HOME/vellum/state.json. It is
+// The manifest is stored as JSON at $XDG_DATA_HOME/lazynf/state.json. It is
 // NOT regenerable from other sources, so every write goes through an atomic
 // temp+rename to avoid corruption on crash.
 package state
@@ -19,8 +19,8 @@ import (
 const CurrentSchemaVersion = 1
 
 // ReleaseImported is the sentinel value stored in InstalledFont.Release when a
-// font was adopted via "vellum import" without version detection. A future
-// "vellum update" will always refresh it because no real release tag matches
+// font was adopted via "lazynf import" without version detection. A future
+// "lazynf update" will always refresh it because no real release tag matches
 // this string.
 const ReleaseImported = "imported"
 
@@ -30,9 +30,9 @@ type Manifest struct {
 	Installed     map[string]InstalledFont `json:"installed"`
 }
 
-// InstalledFont records everything Vellum needs to manage a single installed font:
+// InstalledFont records everything lazynf needs to manage a single installed font:
 // which release it came from, when it was installed, where on disk it lives, and
-// which files were extracted (so a future `vellum remove` can clean up precisely).
+// which files were extracted (so a future `lazynf remove` can clean up precisely).
 type InstalledFont struct {
 	Release     string    `json:"release"`
 	InstalledAt time.Time `json:"installed_at"`

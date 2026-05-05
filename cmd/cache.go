@@ -4,15 +4,15 @@ import (
 	"errors"
 	"os"
 
-	"github.com/lazynop/vellum/internal/ui"
-	"github.com/lazynop/vellum/internal/xdg"
+	"github.com/lazynop/lazynf/internal/ui"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
 func newCacheCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "cache",
-		Short: "Manage Vellum's catalog cache",
+		Short: "Manage lazynf's catalog cache",
 	}
 	c.AddCommand(newCacheCleanCmd())
 	return c

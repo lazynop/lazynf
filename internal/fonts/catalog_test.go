@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lazynop/vellum/internal/cache"
-	"github.com/lazynop/vellum/internal/github"
+	"github.com/lazynop/lazynf/internal/cache"
+	"github.com/lazynop/lazynf/internal/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

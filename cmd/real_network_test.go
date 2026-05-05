@@ -6,16 +6,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lazynop/vellum/cmd"
+	"github.com/lazynop/lazynf/cmd"
 )
 
 // TestE2E_Real_Install_0xProto downloads a real (small) Nerd Font from the upstream repo
 // and verifies the install pipeline runs end-to-end against live GitHub.
 //
-// Skipped unless VELLUM_E2E_REAL=1. Requires network access.
+// Skipped unless LAZYNF_E2E_REAL=1. Requires network access.
 func TestE2E_Real_Install_0xProto(t *testing.T) {
-	if os.Getenv("VELLUM_E2E_REAL") != "1" {
-		t.Skip("set VELLUM_E2E_REAL=1 to run real-network tests")
+	if os.Getenv("LAZYNF_E2E_REAL") != "1" {
+		t.Skip("set LAZYNF_E2E_REAL=1 to run real-network tests")
 	}
 
 	tmp := t.TempDir()

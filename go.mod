@@ -1,4 +1,4 @@
-module github.com/lazynop/vellum
+module github.com/lazynop/lazynf
 
 go 1.25.0
 

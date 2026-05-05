@@ -1,6 +1,6 @@
-// Package cache stores Vellum's catalog cache: the list of available Nerd Fonts
+// Package cache stores lazynf's catalog cache: the list of available Nerd Fonts
 // for a given upstream release tag. The cache is regenerable from GitHub —
-// `vellum cache clean` deletes it without losing anything important.
+// `lazynf cache clean` deletes it without losing anything important.
 package cache
 
 import (

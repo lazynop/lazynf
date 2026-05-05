@@ -1,5 +1,5 @@
 // Package github is a minimal client for the GitHub REST API endpoints
-// Vellum needs: latest release tag, contents of a directory, and asset download.
+// lazynf needs: latest release tag, contents of a directory, and asset download.
 //
 // Auth is best-effort: GITHUB_TOKEN env first, then `gh auth token` if `gh`
 // is in PATH and authenticated, otherwise unauthenticated (60 req/h).

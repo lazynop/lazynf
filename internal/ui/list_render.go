@@ -1,4 +1,4 @@
-// Package ui — list rendering helpers for `vellum list` and `vellum list --installed`.
+// Package ui — list rendering helpers for `lazynf list` and `lazynf list --installed`.
 //
 // Three modes are supported:
 //   - RenderCatalogGrid: multi-column color-coded grid for TTY output.
@@ -13,7 +13,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
 // InstalledSet is a lookup map from font name to its manifest entry.
@@ -87,7 +87,7 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 		StyleSuccess.Render("green") +
 		StyleDim.Render(" = installed   ") +
 		StyleWarn.Render("yellow") +
-		StyleDim.Render(" = imported   (use 'vellum list --installed' for details)")
+		StyleDim.Render(" = imported   (use 'lazynf list --installed' for details)")
 
 	return grid + "\n\n" + legend
 }

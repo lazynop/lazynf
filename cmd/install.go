@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/ui"
-	"github.com/lazynop/vellum/internal/xdg"
+	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/ui"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -127,7 +127,7 @@ func newInstallCmd() *cobra.Command {
 	}
 	c.Flags().StringVar(&flagDest, "dest", "", "override font install dir (default: $XDG_DATA_HOME/fonts)")
 	c.Flags().BoolVar(&flagKeepArchive, "keep-archive", false, "keep downloaded zips in the archives cache")
-	c.Flags().BoolVar(&flagForce, "force", false, "overwrite already-installed or non-vellum-managed dirs")
+	c.Flags().BoolVar(&flagForce, "force", false, "overwrite already-installed or non-lazynf-managed dirs")
 	c.Flags().BoolVar(&flagNoCacheRefr, "no-cache-refresh", false, "skip the final fc-cache invocation")
 	return c
 }

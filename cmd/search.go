@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/xdg"
+	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 

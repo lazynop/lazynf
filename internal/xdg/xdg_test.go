@@ -31,14 +31,14 @@ func TestCacheHome_DefaultFromHome(t *testing.T) {
 	assert.Equal(t, "/u/alice/.cache", CacheHome())
 }
 
-func TestVellumDataDir(t *testing.T) {
+func TestLazynfDataDir(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", "/d")
-	assert.Equal(t, filepath.Join("/d", "vellum"), VellumDataDir())
+	assert.Equal(t, filepath.Join("/d", "lazynf"), lazynfDataDir())
 }
 
-func TestVellumCacheDir(t *testing.T) {
+func TestLazynfCacheDir(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", "/c")
-	assert.Equal(t, filepath.Join("/c", "vellum"), VellumCacheDir())
+	assert.Equal(t, filepath.Join("/c", "lazynf"), lazynfCacheDir())
 }
 
 func TestDefaultFontDir(t *testing.T) {
@@ -48,17 +48,17 @@ func TestDefaultFontDir(t *testing.T) {
 
 func TestStateFile(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", "/d")
-	assert.Equal(t, filepath.Join("/d", "vellum", "state.json"), StateFile())
+	assert.Equal(t, filepath.Join("/d", "lazynf", "state.json"), StateFile())
 }
 
 func TestCatalogFile(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", "/c")
-	assert.Equal(t, filepath.Join("/c", "vellum", "catalog.json"), CatalogFile())
+	assert.Equal(t, filepath.Join("/c", "lazynf", "catalog.json"), CatalogFile())
 }
 
 func TestArchivesDir(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", "/c")
-	assert.Equal(t, filepath.Join("/c", "vellum", "archives"), ArchivesDir())
+	assert.Equal(t, filepath.Join("/c", "lazynf", "archives"), ArchivesDir())
 }
 
 func TestFallback_NoHomeNoXDG(t *testing.T) {

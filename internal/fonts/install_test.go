@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lazynop/vellum/internal/cache"
-	"github.com/lazynop/vellum/internal/fontcache"
-	"github.com/lazynop/vellum/internal/github"
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/internal/cache"
+	"github.com/lazynop/lazynf/internal/fontcache"
+	"github.com/lazynop/lazynf/internal/github"
+	"github.com/lazynop/lazynf/internal/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

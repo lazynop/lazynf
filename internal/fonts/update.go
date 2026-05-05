@@ -7,8 +7,8 @@ import (
 	"maps"
 	"sort"
 
-	"github.com/lazynop/vellum/internal/fontcache"
-	"github.com/lazynop/vellum/internal/state"
+	"github.com/lazynop/lazynf/internal/fontcache"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
 // IsStale reports whether a font at the given recorded release should be
@@ -60,7 +60,7 @@ func Update(ctx context.Context, p UpdateParams, opts UpdateOptions) (*UpdateRes
 	if len(p.Names) > 0 {
 		for _, name := range p.Names {
 			if _, ok := manifest.Installed[name]; !ok {
-				res.Failures[name] = fmt.Errorf("%s: not installed; use `vellum install` to install it first", name)
+				res.Failures[name] = fmt.Errorf("%s: not installed; use `lazynf install` to install it first", name)
 				continue
 			}
 			candidates = append(candidates, name)

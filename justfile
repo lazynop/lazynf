@@ -4,9 +4,9 @@ default:
     @just --list
 
 build:
-    go build -o bin/vellum .
+    go build -o bin/lazynf .
 
-# Run vellum directly via `go run` (no need to build first).
+# Run lazynf directly via `go run` (no need to build first).
 # Pass any arguments after `just run`, e.g.:
 #   just run --help
 #   just run list

@@ -1,4 +1,4 @@
-// Package xdg resolves XDG Base Directory paths and Vellum-specific subpaths.
+// Package xdg resolves XDG Base Directory paths and lazynf-specific subpaths.
 //
 // On Linux, $XDG_DATA_HOME defaults to ~/.local/share and $XDG_CACHE_HOME defaults
 // to ~/.cache. If $HOME is also unset, fall back to the OS temp dir to avoid
@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-const appName = "vellum"
+const appName = "lazynf"
 
 // DataHome returns the XDG data home directory.
 func DataHome() string {
@@ -34,20 +34,20 @@ func CacheHome() string {
 	return filepath.Join(os.TempDir(), appName, "cache")
 }
 
-// VellumDataDir is $XDG_DATA_HOME/vellum.
-func VellumDataDir() string { return filepath.Join(DataHome(), appName) }
+// lazynfDataDir is $XDG_DATA_HOME/lazynf.
+func lazynfDataDir() string { return filepath.Join(DataHome(), appName) }
 
-// VellumCacheDir is $XDG_CACHE_HOME/vellum.
-func VellumCacheDir() string { return filepath.Join(CacheHome(), appName) }
+// lazynfCacheDir is $XDG_CACHE_HOME/lazynf.
+func lazynfCacheDir() string { return filepath.Join(CacheHome(), appName) }
 
 // DefaultFontDir is $XDG_DATA_HOME/fonts (per-user fontconfig location on Linux).
 func DefaultFontDir() string { return filepath.Join(DataHome(), "fonts") }
 
 // StateFile is the persistent manifest path.
-func StateFile() string { return filepath.Join(VellumDataDir(), "state.json") }
+func StateFile() string { return filepath.Join(lazynfDataDir(), "state.json") }
 
 // CatalogFile is the regenerable catalog cache path.
-func CatalogFile() string { return filepath.Join(VellumCacheDir(), "catalog.json") }
+func CatalogFile() string { return filepath.Join(lazynfCacheDir(), "catalog.json") }
 
 // ArchivesDir is the optional kept-archives location (--keep-archive).
-func ArchivesDir() string { return filepath.Join(VellumCacheDir(), "archives") }
+func ArchivesDir() string { return filepath.Join(lazynfCacheDir(), "archives") }

@@ -3,8 +3,8 @@ package fonts
 import (
 	"time"
 
-	"github.com/lazynop/vellum/internal/fontcache"
-	"github.com/lazynop/vellum/internal/github"
+	"github.com/lazynop/lazynf/internal/fontcache"
+	"github.com/lazynop/lazynf/internal/github"
 )
 
 // Event is a discrete state transition during install, surfaced via OnEvent
@@ -35,7 +35,7 @@ type Event struct {
 
 // InstallOptions captures everything the caller can tune for one Install call.
 type InstallOptions struct {
-	// Force, if true, overwrites non-vellum-managed dirs and reinstalls already-current fonts.
+	// Force, if true, overwrites non-lazynf-managed dirs and reinstalls already-current fonts.
 	Force bool
 
 	// KeepArchive, if true, moves the downloaded zip to the archives cache dir

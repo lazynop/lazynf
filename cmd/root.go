@@ -1,4 +1,4 @@
-// Package cmd registers Vellum's Cobra commands and global flags.
+// Package cmd registers lazynf's Cobra commands and global flags.
 //
 // Commands here are thin: parse flags, build dependencies, call into
 // internal/fonts, render results via internal/ui.
@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lazynop/vellum/internal/ui"
+	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -21,9 +21,9 @@ var (
 // NewRoot builds the root command tree.
 func NewRoot(version string) *cobra.Command {
 	root := &cobra.Command{
-		Use:               "vellum",
+		Use:               "lazynf",
 		Short:             "Install Nerd Fonts from your terminal",
-		Long:              "Vellum installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
+		Long:              "lazynf installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
 		Version:           version,
 		SilenceErrors:     true, // we render errors ourselves
 		SilenceUsage:      true,

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/vellum/internal/fonts"
-	"github.com/lazynop/vellum/internal/ui"
-	"github.com/lazynop/vellum/internal/xdg"
+	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/ui"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
