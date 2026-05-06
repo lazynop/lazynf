@@ -266,3 +266,43 @@ func TestRemove_InstalledFont_PartialFilesMissing_Succeeds(t *testing.T) {
 	_, err = os.Stat(dir)
 	assert.True(t, os.IsNotExist(err))
 }
+
+// User added an extra file in the font dir. Remove cleans the recorded files
+// but leaves the dir (since it's still non-empty) and the extra file.
+func TestRemove_InstalledFont_ExtraUserFile_DirAndFileLeft(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "FiraCode")
+	files := []string{"FiraCode-Regular.ttf"}
+	writeFontDir(t, dir, files)
+	// User dropped a custom file in the dir.
+	extra := filepath.Join(dir, "MY-NOTES.txt")
+	require.NoError(t, os.WriteFile(extra, []byte("private"), 0o644))
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"FiraCode"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{SkipCacheRefresh: true})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"FiraCode"}, res.Removed)
+	assert.Empty(t, res.Failures)
+
+	// Recorded file gone, extra survives, dir survives.
+	_, err = os.Stat(filepath.Join(dir, files[0]))
+	assert.True(t, os.IsNotExist(err))
+	_, err = os.Stat(extra)
+	assert.NoError(t, err)
+	_, err = os.Stat(dir)
+	assert.NoError(t, err)
+
+	m, err := state.Load(statePath)
+	require.NoError(t, err)
+	assert.NotContains(t, m.Installed, "FiraCode")
+}
