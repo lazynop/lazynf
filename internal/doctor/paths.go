@@ -18,7 +18,6 @@ func isWritable(dir string) bool {
 	return true
 }
 
-// pathExists returns true if path exists (file or dir).
 func pathExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

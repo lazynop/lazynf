@@ -55,10 +55,8 @@ func checkManifest(statePath string) []Check {
 		Detail:   fmt.Sprintf("v%d", m.SchemaVersion),
 	}}
 
-	allOK := true
 	for name, entry := range m.Installed {
 		if !pathExists(entry.Dir) {
-			allOK = false
 			out = append(out, Check{
 				Section:  section,
 				Title:    name,
@@ -70,7 +68,6 @@ func checkManifest(statePath string) []Check {
 		}
 		ents, err := os.ReadDir(entry.Dir)
 		if err != nil {
-			allOK = false
 			out = append(out, Check{
 				Section:  section,
 				Title:    name,
@@ -86,7 +83,6 @@ func checkManifest(statePath string) []Check {
 			}
 		}
 		if fileCount != len(entry.Files) {
-			allOK = false
 			out = append(out, Check{
 				Section:  section,
 				Title:    name,
@@ -99,7 +95,8 @@ func checkManifest(statePath string) []Check {
 		}
 	}
 
-	if allOK {
+	// Only the schema-version OK is in `out` if no per-entry issue was added.
+	if len(out) == 1 {
 		out = append(out, Check{
 			Section:  section,
 			Title:    "entries",

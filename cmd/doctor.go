@@ -54,35 +54,22 @@ func renderDoctorReport(v *ui.Verbosity, res *doctor.Result) {
 }
 
 func renderDoctorPretty(v *ui.Verbosity, res *doctor.Result) {
-	type group struct {
-		name   string
-		checks []doctor.Check
-	}
-	var groups []group
-	idx := map[string]int{}
-	for _, c := range res.Checks {
-		if i, ok := idx[c.Section]; ok {
-			groups[i].checks = append(groups[i].checks, c)
-			continue
-		}
-		idx[c.Section] = len(groups)
-		groups = append(groups, group{name: c.Section, checks: []doctor.Check{c}})
-	}
-
 	fmt.Fprintln(v.Stdout, "lazynf doctor")
-	for _, g := range groups {
-		fmt.Fprintln(v.Stdout)
-		fmt.Fprintln(v.Stdout, g.name)
-		for _, c := range g.checks {
-			icon := iconForSeverity(c.Severity)
-			line := fmt.Sprintf("  %s %s", icon, c.Title)
-			if c.Detail != "" {
-				line += "  " + ui.StyleDim.Render(c.Detail)
-			}
-			fmt.Fprintln(v.Stdout, line)
-			if c.Hint != "" && c.Severity != doctor.SeverityOK {
-				fmt.Fprintf(v.Stdout, "      %s %s\n", ui.StyleDim.Render("hint:"), c.Hint)
-			}
+	prev := ""
+	for _, c := range res.Checks {
+		if c.Section != prev {
+			fmt.Fprintln(v.Stdout)
+			fmt.Fprintln(v.Stdout, c.Section)
+			prev = c.Section
+		}
+		icon := iconForSeverity(c.Severity)
+		line := fmt.Sprintf("  %s %s", icon, c.Title)
+		if c.Detail != "" {
+			line += "  " + ui.StyleDim.Render(c.Detail)
+		}
+		fmt.Fprintln(v.Stdout, line)
+		if c.Hint != "" && c.Severity != doctor.SeverityOK {
+			fmt.Fprintf(v.Stdout, "      %s %s\n", ui.StyleDim.Render("hint:"), c.Hint)
 		}
 	}
 

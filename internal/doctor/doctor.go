@@ -1,6 +1,6 @@
 package doctor
 
-// Run executes all six diagnostic sections in fixed order and returns the
+// Run executes all diagnostic sections in fixed order and returns the
 // aggregated Result. Never returns an error in the current design — every
 // finding is reported through Check.Severity, not the function return.
 func Run(p Params) (*Result, error) {

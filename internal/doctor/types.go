@@ -36,13 +36,13 @@ type Result struct {
 // MaxSeverity returns the highest severity across all checks. Empty result
 // returns SeverityOK.
 func (r *Result) MaxSeverity() Severity {
-	max := SeverityOK
+	worst := SeverityOK
 	for _, c := range r.Checks {
-		if c.Severity > max {
-			max = c.Severity
+		if c.Severity > worst {
+			worst = c.Severity
 		}
 	}
-	return max
+	return worst
 }
 
 // Counts returns the number of OK / WARN / FAIL checks.
