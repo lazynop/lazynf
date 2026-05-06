@@ -21,10 +21,10 @@ var (
 // NewRoot builds the root command tree.
 func NewRoot(version string) *cobra.Command {
 	root := &cobra.Command{
-		Use:               "lazynf",
-		Short:             "Install Nerd Fonts from your terminal",
-		Long:              "lazynf installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
-		Version:           version,
+		Use:           "lazynf",
+		Short:         "Install Nerd Fonts from your terminal",
+		Long:          "lazynf installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
+		Version:       version,
 		SilenceErrors: true, // we render errors ourselves
 		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
