@@ -25,6 +25,7 @@ func newUpdateCmd() *cobra.Command {
 (or that were imported with the 'imported' sentinel). With no arguments,
 updates all installed fonts that are stale. With --force, refreshes even fonts
 already at the latest release.`,
+		ValidArgsFunction: completeFromManifest,
 		RunE: func(_ *cobra.Command, args []string) error {
 			v := Verbosity()
 

@@ -23,7 +23,8 @@ func newRemoveCmd() *cobra.Command {
 are deleted from disk and from the state manifest, while "imported" fonts are
 only de-adopted from the manifest (their on-disk files are left intact). Use
 --purge to also delete the on-disk directory of imported fonts.`,
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeFromManifest,
 		RunE: func(_ *cobra.Command, args []string) error {
 			v := Verbosity()
 
