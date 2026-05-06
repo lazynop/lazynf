@@ -2,7 +2,7 @@
 
 Install [Nerd Fonts](https://www.nerdfonts.com/font-downloads) from your terminal.
 
-> **Status:** early development. MVP supports `install`, `import`, `update`, `list`, `search`, `cache clean` on Linux. No release tagged yet — build from source.
+> **Status:** early development. MVP supports `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean` on Linux. No release tagged yet — build from source.
 
 ## Install
 
@@ -18,6 +18,8 @@ lazynf import --all                      # adopt fonts already on disk into lazy
 lazynf import JetBrainsMono --detect     # adopt and hash-match against upstream tag
 lazynf update                            # refresh stale or imported fonts
 lazynf update --force                    # refresh even fonts already at the latest tag
+lazynf remove FiraCode                   # uninstall a font (deletes files + state entry)
+lazynf remove --purge JetBrainsMono      # also delete files for fonts that were imported
 lazynf list                              # color grid of available fonts (TTY) / plain on pipe
 lazynf list --installed                  # bordered table of installed fonts
 lazynf search mono                       # find fonts by substring
@@ -45,7 +47,7 @@ Requires Go 1.25+ and (optionally) [`just`](https://github.com/casey/just).
 
 ## Status
 
-MVP — Linux only. Implemented: `install`, `import`, `update`, `list`, `search`, `cache clean`. Planned: macOS and Windows support, `remove`, shell completion, and an interactive TUI.
+MVP — Linux only. Implemented: `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`. Planned: macOS and Windows support, shell completion, and an interactive TUI.
 
 ## License
 
