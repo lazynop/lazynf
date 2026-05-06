@@ -85,9 +85,6 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 }
 
 func summarizeRemove(v *ui.Verbosity, res *fonts.RemoveResult) {
-	if len(res.Removed) == 0 && len(res.Deadopted) == 0 && len(res.Failures) == 0 {
-		return
-	}
 	if len(res.Removed) > 0 {
 		v.Info("%s removed: %s", ui.StyleSuccess.Render("✓"), strings.Join(res.Removed, ", "))
 	}

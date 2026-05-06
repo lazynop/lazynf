@@ -12,13 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// seedRemoveState writes a manifest with the given installed entries.
-func seedRemoveState(t *testing.T, path string, installed map[string]state.InstalledFont) {
-	t.Helper()
-	m := &state.Manifest{SchemaVersion: state.CurrentSchemaVersion, Installed: installed}
-	require.NoError(t, m.Save(path))
-}
-
 // writeFontDir creates dir and writes each filename with a tiny payload.
 func writeFontDir(t *testing.T, dir string, files []string) {
 	t.Helper()
@@ -35,7 +28,7 @@ func TestRemove_InstalledFont_DeletesFilesAndManifest(t *testing.T) {
 	files := []string{"FiraCode-Regular.ttf", "FiraCode-Bold.ttf"}
 	writeFontDir(t, dir, files)
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
 	})
 
@@ -68,7 +61,7 @@ func TestRemove_InstalledFont_DeletesFilesAndManifest(t *testing.T) {
 func TestRemove_NameNotInManifest_FailureRecorded(t *testing.T) {
 	tmp := t.TempDir()
 	statePath := filepath.Join(tmp, "state.json")
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{}) // empty
+	seedState(t, statePath, map[string]state.InstalledFont{}) // empty
 
 	fake := &fontcache.FakeRefresher{}
 	res, err := Remove(context.Background(), RemoveParams{
@@ -92,7 +85,7 @@ func TestRemove_ImportedFont_DefaultDeadopts(t *testing.T) {
 	files := []string{"Hack-Regular.ttf"}
 	writeFontDir(t, dir, files)
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"Hack": {Release: state.ReleaseImported, Dir: dir, Files: files},
 	})
 
@@ -146,7 +139,7 @@ func TestRemove_ImportedFont_PurgeNoFiles_FailureGuidesUser(t *testing.T) {
 	dir := filepath.Join(tmp, "fonts", "Hack")
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"Hack": {Release: state.ReleaseImported, Dir: dir, Files: nil},
 	})
 
@@ -185,7 +178,7 @@ func TestRemove_ImportedFont_PurgeWithFiles_DeletesAll(t *testing.T) {
 	files := []string{"Hack-Regular.ttf", "Hack-Bold.ttf"}
 	writeFontDir(t, dir, files)
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"Hack": {Release: state.ReleaseImported, Dir: dir, Files: files},
 	})
 
@@ -219,7 +212,7 @@ func TestRemove_InstalledFont_DirAlreadyGone_AutoHeals(t *testing.T) {
 	dir := filepath.Join(tmp, "fonts", "FiraCode") // never created
 	files := []string{"FiraCode-Regular.ttf"}
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
 	})
 
@@ -249,7 +242,7 @@ func TestRemove_InstalledFont_PartialFilesMissing_Succeeds(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "FiraCode-Regular.ttf"), []byte("x"), 0o644))
 
 	files := []string{"FiraCode-Regular.ttf", "FiraCode-Bold.ttf"}
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
 	})
 
@@ -279,7 +272,7 @@ func TestRemove_InstalledFont_ExtraUserFile_DirAndFileLeft(t *testing.T) {
 	extra := filepath.Join(dir, "MY-NOTES.txt")
 	require.NoError(t, os.WriteFile(extra, []byte("private"), 0o644))
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
 	})
 
@@ -318,7 +311,7 @@ func TestRemove_BatchMixed_SplitsResults(t *testing.T) {
 	writeFontDir(t, dirA, []string{"Alpha.ttf"})
 	writeFontDir(t, dirB, []string{"Beta.ttf"})
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"Alpha": {Release: "v3.4.0", Dir: dirA, Files: []string{"Alpha.ttf"}},
 		"Beta":  {Release: state.ReleaseImported, Dir: dirB, Files: []string{"Beta.ttf"}},
 	})
@@ -352,7 +345,7 @@ func TestRemove_SkipCacheRefresh_DoesNotInvokeRefresher(t *testing.T) {
 	files := []string{"FiraCode-Regular.ttf"}
 	writeFontDir(t, dir, files)
 
-	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+	seedState(t, statePath, map[string]state.InstalledFont{
 		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
 	})
 

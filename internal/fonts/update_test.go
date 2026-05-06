@@ -69,7 +69,7 @@ with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as z:
 // seedState writes a state manifest with the given installed entries.
 func seedState(t *testing.T, path string, installed map[string]state.InstalledFont) {
 	t.Helper()
-	m := &state.Manifest{SchemaVersion: 1, Installed: installed}
+	m := &state.Manifest{SchemaVersion: state.CurrentSchemaVersion, Installed: installed}
 	require.NoError(t, m.Save(path))
 }
 

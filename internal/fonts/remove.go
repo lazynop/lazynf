@@ -40,7 +40,6 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 	}
 
 	res := &RemoveResult{Failures: map[string]error{}}
-	anyFilesDeleted := false
 
 	for _, name := range p.Names {
 		entry, ok := manifest.Installed[name]
@@ -78,15 +77,16 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 		}
 		delete(manifest.Installed, name)
 		res.Removed = append(res.Removed, name)
-		anyFilesDeleted = true
 		emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveSuccess})
 	}
 
-	if err := manifest.Save(p.StatePath); err != nil {
-		return res, fmt.Errorf("save manifest: %w", err)
+	if len(res.Removed) > 0 || len(res.Deadopted) > 0 {
+		if err := manifest.Save(p.StatePath); err != nil {
+			return res, fmt.Errorf("save manifest: %w", err)
+		}
 	}
 
-	if anyFilesDeleted && !opts.SkipCacheRefresh {
+	if len(res.Removed) > 0 && !opts.SkipCacheRefresh {
 		emit(opts.OnEvent, Event{Kind: EventCacheRefresh})
 		if rerr := p.Refresher.Refresh(ctx); rerr != nil {
 			emit(opts.OnEvent, Event{Kind: EventRemoveError, Err: rerr})
