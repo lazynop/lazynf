@@ -51,7 +51,17 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 			continue
 		}
 
-		// Always-delete-files mode for installed fonts.
+		isImported := entry.Release == state.ReleaseImported
+
+		if isImported && !opts.Purge {
+			// De-adopt only: drop from manifest, leave files on disk.
+			delete(manifest.Installed, name)
+			res.Deadopted = append(res.Deadopted, name)
+			emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveDeadopt})
+			continue
+		}
+
+		// Delete files (installed font, or imported with --purge).
 		if err := deleteFontFiles(entry); err != nil {
 			res.Failures[name] = fmt.Errorf("remove %s: %w", name, err)
 			emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveError, Err: err})

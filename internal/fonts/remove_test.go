@@ -85,6 +85,44 @@ func TestRemove_NameNotInManifest_FailureRecorded(t *testing.T) {
 	assert.False(t, fake.Called, "fc-cache must not run when nothing was deleted")
 }
 
+func TestRemove_ImportedFont_DefaultDeadopts(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "Hack")
+	files := []string{"Hack-Regular.ttf"}
+	writeFontDir(t, dir, files)
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"Hack": {Release: state.ReleaseImported, Dir: dir, Files: files},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"Hack"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{})
+
+	require.NoError(t, err)
+	assert.Empty(t, res.Removed)
+	assert.Equal(t, []string{"Hack"}, res.Deadopted)
+	assert.Empty(t, res.Failures)
+
+	// Files MUST still exist.
+	_, err = os.Stat(filepath.Join(dir, files[0]))
+	assert.NoError(t, err)
+	_, err = os.Stat(dir)
+	assert.NoError(t, err)
+
+	// Manifest entry gone.
+	m, err := state.Load(statePath)
+	require.NoError(t, err)
+	assert.NotContains(t, m.Installed, "Hack")
+
+	// fc-cache NOT called: nothing was deleted.
+	assert.False(t, fake.Called)
+}
+
 func TestRemove_NoManifestFile_AllFailures(t *testing.T) {
 	tmp := t.TempDir()
 	statePath := filepath.Join(tmp, "state.json") // does not exist
