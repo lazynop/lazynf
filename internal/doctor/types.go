@@ -21,11 +21,11 @@ const (
 
 // Check is one finding in a doctor report.
 type Check struct {
-	Section  string   // e.g. "XDG paths", "Manifest"
-	Title    string   // short label, e.g. "font dir", "schema version"
+	Section  string // e.g. "XDG paths", "Manifest"
+	Title    string // short label, e.g. "font dir", "schema version"
 	Severity Severity
-	Detail   string   // human-readable detail, e.g. "/home/.../fonts" or "expected 8, found 6"
-	Hint     string   // optional remediation hint, e.g. "run `lazynf list`"
+	Detail   string // human-readable detail, e.g. "/home/.../fonts" or "expected 8, found 6"
+	Hint     string // optional remediation hint, e.g. "run `lazynf list`"
 }
 
 // Result is the full doctor output: an ordered slice of Check.
