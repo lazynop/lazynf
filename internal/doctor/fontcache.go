@@ -10,7 +10,7 @@ import (
 // On macOS/Windows the check is a noop (CoreText / Windows registry handle
 // font discovery without an external invocation).
 func checkFcCache() []Check {
-	c := Check{Section: SectionFcCache, Title: "fc-cache"}
+	c := Check{Section: SectionFcCache, Title: "binary"}
 	if runtime.GOOS != "linux" {
 		c.Severity = SeverityOK
 		c.Detail = fmt.Sprintf("not applicable on %s", runtime.GOOS)

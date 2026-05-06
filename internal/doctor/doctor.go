@@ -1,9 +1,6 @@
 package doctor
 
 import (
-	"errors"
-	"os"
-
 	"github.com/lazynop/lazynf/internal/cache"
 	"github.com/lazynop/lazynf/internal/state"
 )
@@ -15,20 +12,23 @@ import (
 // Run is the single source of truth for I/O against state.json and
 // catalog.json: it loads each at most once and threads the parsed values into
 // the checks that consume them.
+//
+// Invariant: Result.Checks are appended grouped by Section in fixed order.
+// The cmd-layer pretty renderer relies on contiguous-by-section emission to
+// avoid printing a section header twice.
 func Run(p Params) (*Result, error) {
 	res := &Result{}
 
+	// Hoist shared I/O. state.Load returns (empty, nil) for missing files;
+	// the explicit pathExists check lets checkManifest distinguish "first run"
+	// from "loaded successfully but empty" without a second os.Stat.
 	manifestExists := pathExists(p.StatePath)
-	m, mLoadErr := state.Load(p.StatePath)
-	// state.Load returns (empty, nil) for missing files; force m to nil when the
-	// file did not exist so the manifest check can distinguish "first run" from
-	// "loaded successfully but empty" without a second os.Stat.
-	if !manifestExists {
-		m = nil
-	} else if mLoadErr != nil && errors.Is(mLoadErr, os.ErrNotExist) {
-		// Defensive: state.Load should not surface ErrNotExist, but be safe.
-		manifestExists = false
-		mLoadErr = nil
+	var (
+		m        *state.Manifest
+		mLoadErr error
+	)
+	if manifestExists {
+		m, mLoadErr = state.Load(p.StatePath)
 	}
 
 	cat, catLoadErr := cache.Load(p.CatalogPath)

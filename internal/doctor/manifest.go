@@ -51,8 +51,10 @@ func checkManifest(exists bool, m *state.Manifest, loadErr error) []Check {
 		Detail:   fmt.Sprintf("v%d", m.SchemaVersion),
 	}}
 
+	allOK := true
 	for name, entry := range m.Installed {
 		if !pathExists(entry.Dir) {
+			allOK = false
 			out = append(out, Check{
 				Section:  section,
 				Title:    name,
@@ -64,6 +66,7 @@ func checkManifest(exists bool, m *state.Manifest, loadErr error) []Check {
 		}
 		ents, err := os.ReadDir(entry.Dir)
 		if err != nil {
+			allOK = false
 			out = append(out, Check{
 				Section:  section,
 				Title:    name,
@@ -79,6 +82,7 @@ func checkManifest(exists bool, m *state.Manifest, loadErr error) []Check {
 			}
 		}
 		if fileCount != len(entry.Files) {
+			allOK = false
 			out = append(out, Check{
 				Section:  section,
 				Title:    name,
@@ -91,7 +95,7 @@ func checkManifest(exists bool, m *state.Manifest, loadErr error) []Check {
 		}
 	}
 
-	if len(out) == 1 {
+	if allOK {
 		out = append(out, Check{
 			Section:  section,
 			Title:    "entries",

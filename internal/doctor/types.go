@@ -26,10 +26,10 @@ const (
 var SectionTag = map[string]string{
 	SectionPaths:    "paths",
 	SectionFcCache:  "fc-cache",
-	SectionGitHub:   "github",
+	SectionGitHub:   "auth",
 	SectionManifest: "manifest",
 	SectionCatalog:  "catalog",
-	SectionOrphans:  "orphans",
+	SectionOrphans:  "orphan",
 }
 
 // Severity ranks a Check from harmless to bug-blocking.
