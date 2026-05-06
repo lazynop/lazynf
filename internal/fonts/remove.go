@@ -42,31 +42,25 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 	res := &RemoveResult{Failures: map[string]error{}}
 	anyFilesDeleted := false
 
-	emit := func(e Event) {
-		if opts.OnEvent != nil {
-			opts.OnEvent(e)
-		}
-	}
-
 	for _, name := range p.Names {
 		entry, ok := manifest.Installed[name]
 		if !ok {
 			err := fmt.Errorf("%s: not installed", name)
 			res.Failures[name] = err
-			emit(Event{Font: name, Kind: EventRemoveError, Err: err})
+			emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveError, Err: err})
 			continue
 		}
 
 		// Always-delete-files mode for installed fonts.
 		if err := deleteFontFiles(entry); err != nil {
 			res.Failures[name] = fmt.Errorf("remove %s: %w", name, err)
-			emit(Event{Font: name, Kind: EventRemoveError, Err: err})
+			emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveError, Err: err})
 			continue
 		}
 		delete(manifest.Installed, name)
 		res.Removed = append(res.Removed, name)
 		anyFilesDeleted = true
-		emit(Event{Font: name, Kind: EventRemoveSuccess})
+		emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveSuccess})
 	}
 
 	if err := manifest.Save(p.StatePath); err != nil {
@@ -74,9 +68,9 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 	}
 
 	if anyFilesDeleted && !opts.SkipCacheRefresh {
-		emit(Event{Kind: EventCacheRefresh})
+		emit(opts.OnEvent, Event{Kind: EventCacheRefresh})
 		if rerr := p.Refresher.Refresh(ctx); rerr != nil {
-			emit(Event{Kind: EventRemoveError, Err: rerr})
+			emit(opts.OnEvent, Event{Kind: EventRemoveError, Err: rerr})
 		}
 	}
 
