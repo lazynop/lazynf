@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/lazynop/lazynf/internal/cache"
+	"github.com/lazynop/lazynf/internal/fonts"
 	"github.com/lazynop/lazynf/internal/state"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -21,11 +20,11 @@ func completeFromCatalog(_ *cobra.Command, _ []string, _ string) ([]string, cobr
 }
 
 // completeFromManifest suggests fonts recorded in state.json. state.Load
-// returns an empty (but non-nil) manifest when the file is missing, so the
-// loop simply yields no entries — equivalent to "no suggestions".
+// returns an empty (non-nil) manifest when the file is missing, so the loop
+// simply yields no entries — equivalent to "no suggestions".
 func completeFromManifest(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	m, err := state.Load(xdg.StateFile())
-	if err != nil || m == nil {
+	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	out := make([]string, 0, len(m.Installed))
@@ -36,37 +35,20 @@ func completeFromManifest(_ *cobra.Command, _ []string, _ string) ([]string, cob
 }
 
 // completeOrphans suggests dirs in FontDir whose name is in the catalog
-// but absent from the manifest — same set internal/doctor/orphans flags.
+// but absent from the manifest — same set internal/doctor/checkOrphans flags.
+// Delegates to fonts.FindOrphans so the filter rule lives in one place.
 func completeOrphans(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	cat, err := cache.Load(xdg.CatalogFile())
 	if err != nil || cat == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	catalogSet := make(map[string]struct{}, len(cat.Fonts))
-	for _, name := range cat.Fonts {
-		catalogSet[name] = struct{}{}
-	}
 	m, err := state.Load(xdg.StateFile())
-	if err != nil || m == nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	entries, err := os.ReadDir(xdg.DefaultFontDir())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	var out []string
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if _, inCatalog := catalogSet[name]; !inCatalog {
-			continue
-		}
-		if _, inManifest := m.Installed[name]; inManifest {
-			continue
-		}
-		out = append(out, name)
+	out, err := fonts.FindOrphans(xdg.DefaultFontDir(), cat.Fonts, m.Installed)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 	return out, cobra.ShellCompDirectiveNoFileComp
 }

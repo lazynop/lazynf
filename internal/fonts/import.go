@@ -44,7 +44,7 @@ func Import(ctx context.Context, p ImportParams, opts ImportOptions) (*ImportRes
 	// If --all, scan FontDir for subdirs whose name matches a catalog entry.
 	names := p.Names
 	if p.All && len(names) == 0 {
-		names, err = scanForCatalogFonts(p.FontDir, cat.Fonts)
+		names, err = ScanCatalogDirs(p.FontDir, cat.Fonts)
 		if err != nil {
 			return nil, fmt.Errorf("scan font dir: %w", err)
 		}
@@ -120,29 +120,6 @@ func Import(ctx context.Context, p ImportParams, opts ImportOptions) (*ImportRes
 		return res, fmt.Errorf("save manifest: %w", err)
 	}
 	return res, nil
-}
-
-// scanForCatalogFonts returns the names of FontDir subdirectories whose names
-// appear in the catalog font list.
-func scanForCatalogFonts(fontDir string, catalogFonts []string) ([]string, error) {
-	entries, err := os.ReadDir(fontDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	var matched []string
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		if slices.Contains(catalogFonts, e.Name()) {
-			matched = append(matched, e.Name())
-		}
-	}
-	sort.Strings(matched)
-	return matched, nil
 }
 
 // listFontFiles returns the basenames of all .ttf/.otf files in dir.
