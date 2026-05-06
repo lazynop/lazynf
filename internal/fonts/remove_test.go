@@ -64,3 +64,40 @@ func TestRemove_InstalledFont_DeletesFilesAndManifest(t *testing.T) {
 
 	assert.True(t, fake.Called)
 }
+
+func TestRemove_NameNotInManifest_FailureRecorded(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{}) // empty
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"GhostFont"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{})
+
+	require.NoError(t, err)
+	assert.Empty(t, res.Removed)
+	assert.Empty(t, res.Deadopted)
+	require.Contains(t, res.Failures, "GhostFont")
+	assert.Contains(t, res.Failures["GhostFont"].Error(), "not installed")
+	assert.False(t, fake.Called, "fc-cache must not run when nothing was deleted")
+}
+
+func TestRemove_NoManifestFile_AllFailures(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json") // does not exist
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"A", "B"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{})
+
+	require.NoError(t, err)
+	assert.Contains(t, res.Failures, "A")
+	assert.Contains(t, res.Failures, "B")
+	assert.False(t, fake.Called)
+}
