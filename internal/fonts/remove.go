@@ -61,6 +61,15 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 			continue
 		}
 
+		// Imported + --purge with no recorded files: refuse rather than
+		// blindly RemoveAll a directory lazynf did not create.
+		if isImported && opts.Purge && len(entry.Files) == 0 {
+			err := fmt.Errorf("%s: no recorded files for imported font; run `lazynf import %s --detect` first, or delete the directory manually", name, name)
+			res.Failures[name] = err
+			emit(opts.OnEvent, Event{Font: name, Kind: EventRemoveError, Err: err})
+			continue
+		}
+
 		// Delete files (installed font, or imported with --purge).
 		if err := deleteFontFiles(entry); err != nil {
 			res.Failures[name] = fmt.Errorf("remove %s: %w", name, err)

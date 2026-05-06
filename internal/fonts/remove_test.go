@@ -140,6 +140,44 @@ func TestRemove_NoManifestFile_AllFailures(t *testing.T) {
 	assert.False(t, fake.Called)
 }
 
+func TestRemove_ImportedFont_PurgeNoFiles_FailureGuidesUser(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "Hack")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"Hack": {Release: state.ReleaseImported, Dir: dir, Files: nil},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"Hack"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{Purge: true})
+
+	require.NoError(t, err)
+	assert.Empty(t, res.Removed)
+	assert.Empty(t, res.Deadopted)
+	require.Contains(t, res.Failures, "Hack")
+	msg := res.Failures["Hack"].Error()
+	assert.Contains(t, msg, "no recorded files")
+	assert.Contains(t, msg, "lazynf import")
+	assert.Contains(t, msg, "--detect")
+
+	// Manifest entry should NOT be removed.
+	m, err := state.Load(statePath)
+	require.NoError(t, err)
+	assert.Contains(t, m.Installed, "Hack")
+
+	// Dir untouched.
+	_, err = os.Stat(dir)
+	assert.NoError(t, err)
+
+	assert.False(t, fake.Called)
+}
+
 func TestRemove_ImportedFont_PurgeWithFiles_DeletesAll(t *testing.T) {
 	tmp := t.TempDir()
 	statePath := filepath.Join(tmp, "state.json")
