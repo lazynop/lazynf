@@ -210,3 +210,59 @@ func TestRemove_ImportedFont_PurgeWithFiles_DeletesAll(t *testing.T) {
 
 	assert.True(t, fake.Called)
 }
+
+// Dir already gone (e.g. user did `rm -rf` themselves). Should still succeed
+// and clean up the manifest.
+func TestRemove_InstalledFont_DirAlreadyGone_AutoHeals(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "FiraCode") // never created
+	files := []string{"FiraCode-Regular.ttf"}
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"FiraCode"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{SkipCacheRefresh: true})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"FiraCode"}, res.Removed)
+	assert.Empty(t, res.Failures)
+
+	m, err := state.Load(statePath)
+	require.NoError(t, err)
+	assert.NotContains(t, m.Installed, "FiraCode")
+}
+
+// Some files in Files exist, some don't. Should succeed; missing ones ignored.
+func TestRemove_InstalledFont_PartialFilesMissing_Succeeds(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "FiraCode")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	// Only write one of two recorded files.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "FiraCode-Regular.ttf"), []byte("x"), 0o644))
+
+	files := []string{"FiraCode-Regular.ttf", "FiraCode-Bold.ttf"}
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"FiraCode"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{SkipCacheRefresh: true})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"FiraCode"}, res.Removed)
+	assert.Empty(t, res.Failures)
+	_, err = os.Stat(dir)
+	assert.True(t, os.IsNotExist(err))
+}
