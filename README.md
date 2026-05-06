@@ -2,7 +2,7 @@
 
 Install [Nerd Fonts](https://www.nerdfonts.com/font-downloads) from your terminal.
 
-> **Status:** early development. MVP supports `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean` on Linux. No release tagged yet — build from source.
+> **Status:** early development. MVP supports `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor` on Linux. No release tagged yet — build from source.
 
 ## Install
 
@@ -24,6 +24,7 @@ lazynf list                              # color grid of available fonts (TTY) /
 lazynf list --installed                  # bordered table of installed fonts
 lazynf search mono                       # find fonts by substring
 lazynf cache clean                       # clear catalog cache and kept archives
+lazynf doctor                            # diagnose paths, auth, manifest, catalog, orphans
 ```
 
 Global flags: `-q/--quiet` (errors only), `-v/--verbose` (extra diagnostics on stderr).
@@ -47,7 +48,7 @@ Requires Go 1.25+ and (optionally) [`just`](https://github.com/casey/just).
 
 ## Status
 
-MVP — Linux only. Implemented: `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`. Planned: macOS and Windows support, shell completion, and an interactive TUI.
+MVP — Linux only. Implemented: `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor`. Planned: macOS and Windows support, shell completion, and an interactive TUI.
 
 ## License
 
