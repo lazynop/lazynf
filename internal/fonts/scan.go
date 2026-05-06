@@ -3,7 +3,6 @@ package fonts
 import (
 	"os"
 	"slices"
-	"sort"
 
 	"github.com/lazynop/lazynf/internal/state"
 )
@@ -28,7 +27,7 @@ func ScanCatalogDirs(fontDir string, catalogFonts []string) ([]string, error) {
 			matched = append(matched, e.Name())
 		}
 	}
-	sort.Strings(matched)
+	slices.Sort(matched)
 	return matched, nil
 }
 

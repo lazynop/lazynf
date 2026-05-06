@@ -39,7 +39,18 @@ func TestCheckOrphans_None(t *testing.T) {
 	checks := checkOrphans(fontDir, nil, catalogWith([]string{"FiraCode", "Hack"}))
 	require.Len(t, checks, 1)
 	assert.Equal(t, SeverityOK, checks[0].Severity)
-	assert.Contains(t, checks[0].Detail, "none")
+	assert.Equal(t, "none", checks[0].Detail)
+}
+
+func TestCheckOrphans_FontDirMissing_DistinctDetail(t *testing.T) {
+	tmp := t.TempDir()
+	fontDir := filepath.Join(tmp, "fonts") // never created
+
+	checks := checkOrphans(fontDir, nil, catalogWith([]string{"FiraCode", "Hack"}))
+	require.Len(t, checks, 1)
+	assert.Equal(t, SeverityOK, checks[0].Severity)
+	// User-visible distinction: "doesn't exist yet" vs plain "none".
+	assert.Contains(t, checks[0].Detail, "does not exist")
 }
 
 func TestCheckOrphans_DetectsUnmanagedDir(t *testing.T) {

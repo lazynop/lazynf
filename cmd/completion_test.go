@@ -84,6 +84,16 @@ func TestCompleteFromManifest_Missing_Empty(t *testing.T) {
 	assert.Empty(t, out)
 }
 
+func TestCompleteFromManifest_ParseError_NoSuggestions(t *testing.T) {
+	withXDG(t)
+	statePath := filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(statePath), 0o755))
+	require.NoError(t, os.WriteFile(statePath, []byte("not json"), 0o644))
+
+	out, _ := completeFromManifest(nil, nil, "")
+	assert.Empty(t, out)
+}
+
 func TestCompleteFromManifest_Populated_ReturnsAllInstalled(t *testing.T) {
 	withXDG(t)
 	seedManifest(t, []string{"FiraCode", "Hack", "JetBrainsMono"})

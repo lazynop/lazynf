@@ -36,7 +36,7 @@ Run `lazynf --help` for full options.
 ```bash
 source <(lazynf completion bash)              # bash
 lazynf completion zsh > ~/.zfunc/_lazynf      # zsh
-lazynf completion fish | source              # fish
+lazynf completion fish | source               # fish
 ```
 
 Tab completion suggests font names dynamically: catalog entries for `install`, manifest entries for `update`/`remove`, orphan candidates for `import`. Run `lazynf list` once to populate the catalog cache.

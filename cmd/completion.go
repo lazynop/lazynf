@@ -35,8 +35,8 @@ func completeFromManifest(_ *cobra.Command, _ []string, _ string) ([]string, cob
 }
 
 // completeOrphans suggests dirs in FontDir whose name is in the catalog
-// but absent from the manifest — same set internal/doctor/checkOrphans flags.
-// Delegates to fonts.FindOrphans so the filter rule lives in one place.
+// but absent from the manifest. Delegates to fonts.FindOrphans, the same
+// helper internal/doctor/checkOrphans uses, so the filter rule has one home.
 func completeOrphans(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	cat, err := cache.Load(xdg.CatalogFile())
 	if err != nil || cat == nil {

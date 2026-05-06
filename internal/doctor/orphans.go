@@ -1,7 +1,9 @@
 package doctor
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/lazynop/lazynf/internal/cache"
@@ -24,6 +26,18 @@ func checkOrphans(fontDir string, m *state.Manifest, cat *cache.Catalog) []Check
 			Severity: SeverityWarn,
 			Detail:   "catalog not cached, skipping scan",
 			Hint:     "run `lazynf list` to populate the catalog first",
+		}}
+	}
+
+	// Distinguish "FontDir doesn't exist yet" from "FontDir present, no orphans"
+	// in the user-visible detail: doctor is a diagnostic and the two states
+	// have different remediations.
+	if _, err := os.Stat(fontDir); errors.Is(err, os.ErrNotExist) {
+		return []Check{{
+			Section:  section,
+			Title:    "scan",
+			Severity: SeverityOK,
+			Detail:   "none (font dir does not exist yet)",
 		}}
 	}
 
