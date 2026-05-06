@@ -48,9 +48,8 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 						if e.Font == "" && e.Err != nil {
 							// Soft error from fc-cache.
 							v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
-						} else if e.Err != nil {
-							v.Errorf("%s %s", ui.StyleFailure.Render("✗"), e.Err.Error())
 						}
+						// Per-font errors are surfaced by summarizeRemove below.
 					case fonts.EventCacheRefresh:
 						if showProgress {
 							spin = ui.NewSpinner("Refreshing font cache")
@@ -97,8 +96,8 @@ func summarizeRemove(v *ui.Verbosity, res *fonts.RemoveResult) {
 			ui.StyleDim.Render("•"), strings.Join(res.Deadopted, ", "))
 	}
 	if len(res.Failures) > 0 {
-		for name, err := range res.Failures {
-			v.Errorf("%s %s: %s", ui.StyleFailure.Render("✗"), name, err.Error())
+		for _, err := range res.Failures {
+			v.Errorf("%s %s", ui.StyleFailure.Render("✗"), err.Error())
 		}
 	}
 }
