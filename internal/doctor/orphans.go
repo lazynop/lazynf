@@ -11,15 +11,15 @@ import (
 	"github.com/lazynop/lazynf/internal/state"
 )
 
-// checkOrphans scans FontDir for subdirectories whose name matches a font in
-// the catalog but that are not present in the state manifest — candidates for
-// `lazynf import`. Skips silently with a WARN if the catalog cache is not
-// available; doctor stays offline.
-func checkOrphans(fontDir, statePath, catalogPath string) []Check {
-	const section = "Orphan directories"
+// checkOrphans scans fontDir for subdirectories whose name matches a font in
+// the catalog but that are not present in the manifest — candidates for
+// `lazynf import`. Skips silently with a WARN if the catalog is not available.
+// m and cat are loaded once by Run; m may be a non-nil empty manifest, cat may
+// be nil to indicate "not cached".
+func checkOrphans(fontDir string, m *state.Manifest, cat *cache.Catalog) []Check {
+	const section = SectionOrphans
 
-	cat, err := cache.Load(catalogPath)
-	if err != nil || cat == nil {
+	if cat == nil {
 		return []Check{{
 			Section:  section,
 			Title:    "scan",
@@ -32,16 +32,6 @@ func checkOrphans(fontDir, statePath, catalogPath string) []Check {
 	catalogSet := make(map[string]struct{}, len(cat.Fonts))
 	for _, name := range cat.Fonts {
 		catalogSet[name] = struct{}{}
-	}
-
-	m, err := state.Load(statePath)
-	if err != nil {
-		return []Check{{
-			Section:  section,
-			Title:    "scan",
-			Severity: SeverityWarn,
-			Detail:   fmt.Sprintf("manifest unreadable: %s", err),
-		}}
 	}
 
 	entries, err := os.ReadDir(fontDir)
@@ -62,6 +52,11 @@ func checkOrphans(fontDir, statePath, catalogPath string) []Check {
 		}}
 	}
 
+	installed := map[string]state.InstalledFont{}
+	if m != nil {
+		installed = m.Installed
+	}
+
 	var orphans []string
 	for _, e := range entries {
 		if !e.IsDir() {
@@ -71,7 +66,7 @@ func checkOrphans(fontDir, statePath, catalogPath string) []Check {
 		if _, inCatalog := catalogSet[name]; !inCatalog {
 			continue
 		}
-		if _, inManifest := m.Installed[name]; inManifest {
+		if _, inManifest := installed[name]; inManifest {
 			continue
 		}
 		orphans = append(orphans, name)

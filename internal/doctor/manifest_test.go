@@ -1,7 +1,7 @@
 package doctor
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,19 +12,22 @@ import (
 )
 
 func TestCheckManifest_Missing_FirstRun(t *testing.T) {
-	tmp := t.TempDir()
-	statePath := filepath.Join(tmp, "state.json") // does not exist
-
-	checks := checkManifest(statePath)
+	checks := checkManifest(false, nil, nil)
 	require.Len(t, checks, 1)
-	assert.Equal(t, "Manifest", checks[0].Section)
+	assert.Equal(t, SectionManifest, checks[0].Section)
 	assert.Equal(t, SeverityOK, checks[0].Severity)
 	assert.Contains(t, checks[0].Detail, "no manifest yet")
 }
 
+func TestCheckManifest_ParseError_Fail(t *testing.T) {
+	checks := checkManifest(true, nil, errors.New("invalid character 'x'"))
+	require.Len(t, checks, 1)
+	assert.Equal(t, SeverityFail, checks[0].Severity)
+	assert.Contains(t, checks[0].Detail, "parse error")
+}
+
 func TestCheckManifest_HappyPath_AllOnDisk(t *testing.T) {
 	tmp := t.TempDir()
-	statePath := filepath.Join(tmp, "state.json")
 	dir := filepath.Join(tmp, "fonts", "FiraCode")
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "FiraCode-Regular.ttf"), []byte("x"), 0o644))
@@ -35,11 +38,10 @@ func TestCheckManifest_HappyPath_AllOnDisk(t *testing.T) {
 			"FiraCode": {Release: "v3.4.0", Dir: dir, Files: []string{"FiraCode-Regular.ttf"}},
 		},
 	}
-	require.NoError(t, m.Save(statePath))
 
-	checks := checkManifest(statePath)
+	checks := checkManifest(true, m, nil)
 	require.NotEmpty(t, checks)
-	assert.Equal(t, "Manifest", checks[0].Section)
+	assert.Equal(t, SectionManifest, checks[0].Section)
 	for _, c := range checks {
 		assert.NotEqual(t, SeverityFail, c.Severity)
 		assert.NotEqual(t, SeverityWarn, c.Severity)
@@ -48,7 +50,6 @@ func TestCheckManifest_HappyPath_AllOnDisk(t *testing.T) {
 
 func TestCheckManifest_DirMissing_Warn(t *testing.T) {
 	tmp := t.TempDir()
-	statePath := filepath.Join(tmp, "state.json")
 	dir := filepath.Join(tmp, "fonts", "FiraCode") // never created
 
 	m := &state.Manifest{
@@ -57,9 +58,8 @@ func TestCheckManifest_DirMissing_Warn(t *testing.T) {
 			"FiraCode": {Release: "v3.4.0", Dir: dir, Files: []string{"FiraCode-Regular.ttf"}},
 		},
 	}
-	require.NoError(t, m.Save(statePath))
 
-	checks := checkManifest(statePath)
+	checks := checkManifest(true, m, nil)
 	var sawWarn bool
 	for _, c := range checks {
 		if c.Severity == SeverityWarn {
@@ -73,7 +73,6 @@ func TestCheckManifest_DirMissing_Warn(t *testing.T) {
 
 func TestCheckManifest_FileCountDiverges_Warn(t *testing.T) {
 	tmp := t.TempDir()
-	statePath := filepath.Join(tmp, "state.json")
 	dir := filepath.Join(tmp, "fonts", "Hack")
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	// Manifest expects 2 files; only 1 on disk.
@@ -85,9 +84,8 @@ func TestCheckManifest_FileCountDiverges_Warn(t *testing.T) {
 			"Hack": {Release: "v3.4.0", Dir: dir, Files: []string{"Hack-Regular.ttf", "Hack-Bold.ttf"}},
 		},
 	}
-	require.NoError(t, m.Save(statePath))
 
-	checks := checkManifest(statePath)
+	checks := checkManifest(true, m, nil)
 	var sawWarn bool
 	for _, c := range checks {
 		if c.Severity == SeverityWarn {
@@ -101,13 +99,12 @@ func TestCheckManifest_FileCountDiverges_Warn(t *testing.T) {
 }
 
 func TestCheckManifest_SchemaTooNew_Fail(t *testing.T) {
-	tmp := t.TempDir()
-	statePath := filepath.Join(tmp, "state.json")
-	future := state.CurrentSchemaVersion + 1
-	body := []byte(fmt.Sprintf(`{"schema_version":%d,"installed":{}}`, future))
-	require.NoError(t, os.WriteFile(statePath, body, 0o644))
+	m := &state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion + 1,
+		Installed:     map[string]state.InstalledFont{},
+	}
 
-	checks := checkManifest(statePath)
+	checks := checkManifest(true, m, nil)
 	require.NotEmpty(t, checks)
 	assert.Equal(t, SeverityFail, checks[0].Severity)
 	assert.Contains(t, checks[0].Detail, "schema")

@@ -1,23 +1,21 @@
 package doctor
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
 	"github.com/lazynop/lazynf/internal/state"
 )
 
-// checkManifest validates the state.json: parseability, schema version, and
-// for each entry that the recorded Dir exists on disk and the file count
-// matches len(Files).
-func checkManifest(statePath string) []Check {
-	const section = "Manifest"
+// checkManifest reports on a manifest already loaded by Run. Inputs:
+//   - exists: state.json existed on disk (distinguishes "first run" from
+//     "loaded successfully but empty").
+//   - m: the parsed manifest (non-nil if loaded; may be empty).
+//   - loadErr: parse failure (only meaningful when exists is true and m is nil).
+func checkManifest(exists bool, m *state.Manifest, loadErr error) []Check {
+	const section = SectionManifest
 
-	// Distinguish "file does not exist" from other read errors. state.Load
-	// returns a fresh empty manifest on ErrNotExist, hiding the distinction —
-	// we want to report "no manifest yet (first run)" as OK, not as "0 fonts".
-	if _, err := os.Stat(statePath); errors.Is(err, os.ErrNotExist) {
+	if !exists {
 		return []Check{{
 			Section:  section,
 			Title:    "state.json",
@@ -25,14 +23,12 @@ func checkManifest(statePath string) []Check {
 			Detail:   "no manifest yet (first run)",
 		}}
 	}
-
-	m, err := state.Load(statePath)
-	if err != nil {
+	if loadErr != nil {
 		return []Check{{
 			Section:  section,
 			Title:    "state.json",
 			Severity: SeverityFail,
-			Detail:   fmt.Sprintf("parse error: %s", err),
+			Detail:   fmt.Sprintf("parse error: %s", loadErr),
 		}}
 	}
 
@@ -95,7 +91,6 @@ func checkManifest(statePath string) []Check {
 		}
 	}
 
-	// Only the schema-version OK is in `out` if no per-entry issue was added.
 	if len(out) == 1 {
 		out = append(out, Check{
 			Section:  section,

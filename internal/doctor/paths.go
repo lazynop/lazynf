@@ -45,7 +45,7 @@ func checkPaths(p Params) []Check {
 }
 
 func classifyPath(title, dir string) Check {
-	c := Check{Section: "XDG paths", Title: title, Detail: dir}
+	c := Check{Section: SectionPaths, Title: title, Detail: dir}
 	if pathExists(dir) {
 		if isWritable(dir) {
 			c.Severity = SeverityOK

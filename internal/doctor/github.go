@@ -7,7 +7,7 @@ import (
 // checkGitHub reports which auth source the github.Client picked. Does NOT
 // hit the network; this is purely a configuration introspection.
 func checkGitHub(c *github.Client) []Check {
-	check := Check{Section: "GitHub auth", Title: "auth source"}
+	check := Check{Section: SectionGitHub, Title: "auth source"}
 	src := c.AuthSource()
 	if src == github.AuthNone {
 		check.Severity = SeverityWarn

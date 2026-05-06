@@ -11,18 +11,19 @@ import (
 // stale and a refresh is recommended.
 const catalogStaleAfter = 30 * 24 * time.Hour
 
-// checkCatalog reports on the on-disk catalog cache: presence, parseability,
-// font count, and freshness. No network call.
-func checkCatalog(catalogPath string) []Check {
-	const section = "Catalog cache"
+// checkCatalog reports on a catalog already loaded by Run. Semantics of inputs:
+//   - cat == nil && loadErr == nil: file absent (cache.Load convention).
+//   - cat == nil && loadErr != nil: parse failure.
+//   - cat != nil: loaded successfully.
+func checkCatalog(cat *cache.Catalog, loadErr error) []Check {
+	const section = SectionCatalog
 
-	cat, err := cache.Load(catalogPath)
-	if err != nil {
+	if loadErr != nil {
 		return []Check{{
 			Section:  section,
 			Title:    "catalog.json",
 			Severity: SeverityFail,
-			Detail:   fmt.Sprintf("parse error: %s", err),
+			Detail:   fmt.Sprintf("parse error: %s", loadErr),
 		}}
 	}
 	if cat == nil {

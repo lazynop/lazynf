@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/lazynop/lazynf/internal/doctor"
 	"github.com/lazynop/lazynf/internal/ui"
@@ -87,7 +86,7 @@ func renderDoctorPlain(v *ui.Verbosity, res *doctor.Result) {
 		if c.Severity == doctor.SeverityFail {
 			tag = "FAIL"
 		}
-		section := strings.ToLower(strings.Fields(c.Section)[0])
+		section := doctor.SectionTag[c.Section]
 		fmt.Fprintf(v.Stdout, "%s %s %s\n", tag, section, c.Detail)
 	}
 }

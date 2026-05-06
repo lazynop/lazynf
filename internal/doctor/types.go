@@ -10,6 +10,28 @@ import (
 	"github.com/lazynop/lazynf/internal/github"
 )
 
+// Section names used in pretty output.
+const (
+	SectionPaths    = "XDG paths"
+	SectionFcCache  = "fc-cache"
+	SectionGitHub   = "GitHub auth"
+	SectionManifest = "Manifest"
+	SectionCatalog  = "Catalog cache"
+	SectionOrphans  = "Orphan directories"
+)
+
+// SectionTag maps a Section to a short, lowercase, parser-stable token used
+// as the second field in plain (pipe) output. Decouples human-readable
+// section labels from machine-stable script contract.
+var SectionTag = map[string]string{
+	SectionPaths:    "paths",
+	SectionFcCache:  "fc-cache",
+	SectionGitHub:   "github",
+	SectionManifest: "manifest",
+	SectionCatalog:  "catalog",
+	SectionOrphans:  "orphans",
+}
+
 // Severity ranks a Check from harmless to bug-blocking.
 type Severity int
 
