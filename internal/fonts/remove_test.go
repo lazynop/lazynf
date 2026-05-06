@@ -139,3 +139,36 @@ func TestRemove_NoManifestFile_AllFailures(t *testing.T) {
 	assert.Contains(t, res.Failures, "B")
 	assert.False(t, fake.Called)
 }
+
+func TestRemove_ImportedFont_PurgeWithFiles_DeletesAll(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "Hack")
+	files := []string{"Hack-Regular.ttf", "Hack-Bold.ttf"}
+	writeFontDir(t, dir, files)
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"Hack": {Release: state.ReleaseImported, Dir: dir, Files: files},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"Hack"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{Purge: true})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Hack"}, res.Removed)
+	assert.Empty(t, res.Deadopted)
+	assert.Empty(t, res.Failures)
+
+	for _, f := range files {
+		_, err := os.Stat(filepath.Join(dir, f))
+		assert.True(t, os.IsNotExist(err))
+	}
+	_, err = os.Stat(dir)
+	assert.True(t, os.IsNotExist(err))
+
+	assert.True(t, fake.Called)
+}
