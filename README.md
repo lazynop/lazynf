@@ -31,6 +31,16 @@ Global flags: `-q/--quiet` (errors only), `-v/--verbose` (extra diagnostics on s
 
 Run `lazynf --help` for full options.
 
+### Shell completion
+
+```bash
+source <(lazynf completion bash)              # bash
+lazynf completion zsh > ~/.zfunc/_lazynf      # zsh
+lazynf completion fish | source              # fish
+```
+
+Tab completion suggests font names dynamically: catalog entries for `install`, manifest entries for `update`/`remove`, orphan candidates for `import`. Run `lazynf list` once to populate the catalog cache.
+
 ### Authentication
 
 `lazynf` makes one GitHub API call per command in the steady state (cached against the upstream release tag). It picks up credentials from, in order: `GITHUB_TOKEN`, `gh auth token`, then unauthenticated. Anonymous use is fine for occasional installs; authenticate to avoid GitHub's anonymous rate limits on heavy use.

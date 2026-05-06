@@ -10,6 +10,7 @@ All notable changes to lazynf are documented here. Format follows [Keep a Change
 - `lazynf list --installed` renders a bordered table on a TTY (font / release / installed at). Pipe / redirected output is `<name>\t<release>` per line for scripts.
 
 ### Added
+- Shell completion via `lazynf completion {bash|zsh|fish|powershell}`. Tab completion suggests font names dynamically: catalog entries for `install`, manifest entries for `update`/`remove`, orphan candidates for `import`. No network calls — completion silently returns no suggestions when the catalog cache is absent (run `lazynf list` to populate).
 - `lazynf doctor` — diagnoses lazynf's environment and state. Reports on font directories, fc-cache availability, GitHub auth source, manifest integrity, catalog cache freshness, and orphan directories. No network calls and no automatic fixes — points to the existing commands (`list`, `import`, `update`, `remove`) that resolve each issue.
 - `lazynf remove <font>...` — uninstalls fonts. By default, deletes on-disk files for fonts installed via lazynf, and only de-adopts (manifest-only) fonts that were imported from elsewhere. With `--purge`, also deletes the on-disk directory of imported fonts. `--no-cache-refresh` opts out of the final `fc-cache`.
 - `lazynf update [<font>...]` re-downloads installed fonts whose recorded release no longer matches the upstream catalog (or were imported with the `imported` sentinel). With no arguments, updates everything stale; with `--force`, refreshes even fonts already at the latest release.
