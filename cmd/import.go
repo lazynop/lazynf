@@ -26,6 +26,7 @@ func newImportCmd() *cobra.Command {
 			"update, or remove them.\n\n" +
 			"With --all, scans the font directory and imports every subdirectory " +
 			"whose name matches a Nerd Fonts catalog entry.",
+		ValidArgsFunction: completeOrphans,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !flagAll && len(args) == 0 {
 				return errors.New("specify at least one font name or use --all")
