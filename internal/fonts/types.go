@@ -24,6 +24,9 @@ const (
 	EventImportSuccess                   // font successfully recorded in state
 	EventImportSkipped                   // font already in state and --force not set
 	EventImportError                     // per-font import failure (Err is non-nil)
+	EventRemoveSuccess                   // font fully removed (manifest entry deleted, files removed)
+	EventRemoveDeadopt                   // imported font removed from manifest only, files left on disk
+	EventRemoveError                     // per-font remove failure (Err is non-nil)
 )
 
 type Event struct {
@@ -137,4 +140,34 @@ type UpdateResult struct {
 	Updated      []string         // fonts that were re-downloaded and refreshed
 	AlreadyFresh []string         // fonts already at the latest release (not re-downloaded)
 	Failures     map[string]error // per-font failures (e.g. not installed, network error)
+}
+
+// RemoveParams are the dependencies and paths the remove pipeline needs.
+type RemoveParams struct {
+	// Names is the set of fonts to remove. Must be non-empty.
+	Names []string
+
+	StatePath string // path to state.json
+	Refresher fontcache.Refresher
+}
+
+// RemoveOptions captures caller-tunable behaviour for a single Remove call.
+type RemoveOptions struct {
+	// Purge, if true, also deletes on-disk files for "imported" fonts.
+	// For non-imported fonts the flag is a no-op (files are always deleted).
+	Purge bool
+
+	// SkipCacheRefresh, if true, suppresses the final fc-cache invocation.
+	SkipCacheRefresh bool
+
+	// OnEvent is called once per state transition. May be nil.
+	OnEvent func(Event)
+}
+
+// RemoveResult summarises the outcome of a batch remove. Removed and Deadopted
+// are disjoint: every successful font ends up in exactly one of them.
+type RemoveResult struct {
+	Removed   []string         // fonts whose files were deleted from disk
+	Deadopted []string         // imported fonts removed from manifest only (files left)
+	Failures  map[string]error // per-font failures
 }
