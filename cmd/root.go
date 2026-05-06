@@ -25,9 +25,8 @@ func NewRoot(version string) *cobra.Command {
 		Short:             "Install Nerd Fonts from your terminal",
 		Long:              "lazynf installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
 		Version:           version,
-		SilenceErrors:     true, // we render errors ourselves
-		SilenceUsage:      true,
-		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
+		SilenceErrors: true, // we render errors ourselves
+		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if flagQuiet && flagVerbose {
 				return fmt.Errorf("--quiet and --verbose are mutually exclusive")
