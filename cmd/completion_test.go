@@ -92,3 +92,36 @@ func TestCompleteFromManifest_Populated_ReturnsAllInstalled(t *testing.T) {
 	assert.ElementsMatch(t, []string{"FiraCode", "Hack", "JetBrainsMono"}, out)
 	assert.NotZero(t, dir)
 }
+
+func TestCompleteOrphans_NoCatalog_Empty(t *testing.T) {
+	withXDG(t) // catalog absent
+
+	out, _ := completeOrphans(nil, nil, "")
+	assert.Empty(t, out)
+}
+
+func TestCompleteOrphans_NoFontDir_Empty(t *testing.T) {
+	withXDG(t)
+	seedCatalog(t, []string{"FiraCode", "Hack"})
+	// FontDir not created.
+
+	out, _ := completeOrphans(nil, nil, "")
+	assert.Empty(t, out)
+}
+
+func TestCompleteOrphans_Mix_ReturnsCandidates(t *testing.T) {
+	withXDG(t)
+	// catalog = {A, B, C}; font dir contains {A, B, X}; manifest tracks {A}.
+	// Expected orphans: {B}.
+	seedCatalog(t, []string{"A", "B", "C"})
+
+	fontDir := filepath.Join(os.Getenv("XDG_DATA_HOME"), "fonts")
+	for _, name := range []string{"A", "B", "X"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(fontDir, name), 0o755))
+	}
+	seedManifest(t, []string{"A"})
+
+	out, dir := completeOrphans(nil, nil, "")
+	assert.Equal(t, []string{"B"}, out)
+	assert.NotZero(t, dir)
+}
