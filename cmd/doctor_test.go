@@ -61,6 +61,7 @@ func TestRenderDoctorPlain_FallbackForUnknownSection(t *testing.T) {
 	var buf bytes.Buffer
 	v := &ui.Verbosity{Level: ui.LevelNormal, Stdout: &buf, Stderr: &buf}
 	renderDoctorPlain(v, res)
-	// Fallback lowercases the section name; never emits an empty tag slot.
-	assert.Contains(t, buf.String(), "WARN made up section detail")
+	// Fallback lowercases the section name and replaces spaces with '-'
+	// so the field-by-position contract holds for parsers like `awk '{print $2}'`.
+	assert.Contains(t, buf.String(), "WARN made-up-section detail")
 }

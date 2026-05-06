@@ -90,7 +90,8 @@ func renderDoctorPlain(v *ui.Verbosity, res *doctor.Result) {
 		section := doctor.SectionTag[c.Section]
 		if section == "" {
 			// Defensive: a future check could add a Section without a tag.
-			section = strings.ToLower(c.Section)
+			// Keep the field positional and space-free so awk-style parsing works.
+			section = strings.ReplaceAll(strings.ToLower(c.Section), " ", "-")
 		}
 		fmt.Fprintf(v.Stdout, "%s %s %s\n", tag, section, c.Detail)
 	}
