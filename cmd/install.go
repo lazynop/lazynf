@@ -19,9 +19,10 @@ func newInstallCmd() *cobra.Command {
 		flagNoCacheRefr bool
 	)
 	c := &cobra.Command{
-		Use:   "install <font>...",
-		Short: "Install one or more Nerd Fonts",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "install <font>...",
+		Short:             "Install one or more Nerd Fonts",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeFromCatalog,
 		RunE: func(_ *cobra.Command, args []string) error {
 			v := Verbosity()
 
