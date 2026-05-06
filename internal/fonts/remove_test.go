@@ -306,3 +306,64 @@ func TestRemove_InstalledFont_ExtraUserFile_DirAndFileLeft(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, m.Installed, "FiraCode")
 }
+
+// One installed + one imported (deadopt) + one unknown — each populates the
+// expected slot in the result.
+func TestRemove_BatchMixed_SplitsResults(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+
+	dirA := filepath.Join(tmp, "fonts", "Alpha")
+	dirB := filepath.Join(tmp, "fonts", "Beta")
+	writeFontDir(t, dirA, []string{"Alpha.ttf"})
+	writeFontDir(t, dirB, []string{"Beta.ttf"})
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"Alpha": {Release: "v3.4.0", Dir: dirA, Files: []string{"Alpha.ttf"}},
+		"Beta":  {Release: state.ReleaseImported, Dir: dirB, Files: []string{"Beta.ttf"}},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"Alpha", "Beta", "Gamma"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Alpha"}, res.Removed)
+	assert.Equal(t, []string{"Beta"}, res.Deadopted)
+	require.Contains(t, res.Failures, "Gamma")
+
+	// Alpha files gone, Beta files left, Gamma untouched.
+	_, err = os.Stat(filepath.Join(dirA, "Alpha.ttf"))
+	assert.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(dirB, "Beta.ttf"))
+	assert.NoError(t, err)
+
+	// fc-cache called once because Alpha was deleted.
+	assert.True(t, fake.Called)
+}
+
+func TestRemove_SkipCacheRefresh_DoesNotInvokeRefresher(t *testing.T) {
+	tmp := t.TempDir()
+	statePath := filepath.Join(tmp, "state.json")
+	dir := filepath.Join(tmp, "fonts", "FiraCode")
+	files := []string{"FiraCode-Regular.ttf"}
+	writeFontDir(t, dir, files)
+
+	seedRemoveState(t, statePath, map[string]state.InstalledFont{
+		"FiraCode": {Release: "v3.4.0", Dir: dir, Files: files},
+	})
+
+	fake := &fontcache.FakeRefresher{}
+	res, err := Remove(context.Background(), RemoveParams{
+		Names:     []string{"FiraCode"},
+		StatePath: statePath,
+		Refresher: fake,
+	}, RemoveOptions{SkipCacheRefresh: true})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"FiraCode"}, res.Removed)
+	assert.False(t, fake.Called, "fc-cache must not run when SkipCacheRefresh is set")
+}
