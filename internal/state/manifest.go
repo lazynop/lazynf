@@ -40,6 +40,12 @@ type InstalledFont struct {
 	Files       []string  `json:"files"`
 }
 
+// IsImported reports whether this entry was adopted via "lazynf import"
+// without version detection (its Release equals ReleaseImported).
+func (f InstalledFont) IsImported() bool {
+	return f.Release == ReleaseImported
+}
+
 // Load reads the manifest at the given path. If the file does not exist,
 // returns a fresh empty manifest (no error).
 func Load(path string) (*Manifest, error) {

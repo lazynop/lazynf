@@ -50,7 +50,7 @@ func Remove(ctx context.Context, p RemoveParams, opts RemoveOptions) (*RemoveRes
 			continue
 		}
 
-		isImported := entry.Release == state.ReleaseImported
+		isImported := entry.IsImported()
 
 		if isImported && !opts.Purge {
 			// De-adopt only: drop from manifest, leave files on disk.

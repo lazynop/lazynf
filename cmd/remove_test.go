@@ -102,12 +102,10 @@ func TestRemoveCmd_AllEmptyManifest_NoOp(t *testing.T) {
 	require.NoError(t, err) // exit 0
 }
 
-// seedMixedManifest seeds a manifest with installed and imported entries.
-// Each installed entry has a real on-disk Dir under t.TempDir() so file
-// deletion in Remove succeeds (Files is empty so deleteFontFiles loops
-// zero times and then os.Remove on an empty Dir succeeds). Imported
-// entries point at /tmp paths that are not created — Remove de-adopts
-// them without touching disk.
+// seedMixedManifest seeds a manifest with both installed and imported entries.
+// Installed entries get a real (empty) Dir under t.TempDir() so fonts.Remove
+// can clean them up. Imported entries use a non-existent /tmp path because
+// the de-adopt path never touches disk.
 func seedMixedManifest(t *testing.T, installed, imported []string) {
 	t.Helper()
 	m := &state.Manifest{
@@ -152,89 +150,59 @@ func setStdin(t *testing.T, input string) {
 	t.Cleanup(func() { stdinReader = prev })
 }
 
-func TestRemoveCmd_AllPromptYes_Proceeds(t *testing.T) {
-	withXDG(t)
-	installFakeRefresher(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "y\n")
+func TestRemoveCmd_AllPromptProceeds(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{"y", "y\n"},
+		{"Y_uppercase", "Y\n"},
+		{"yes_word", "yes\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			withXDG(t)
+			installFakeRefresher(t)
+			seedManifest(t, []string{"FiraCode"})
+			setTTY(t, true)
+			setStdin(t, tc.input)
 
-	err := runRemove(t, []string{"--all"})
-	require.NoError(t, err)
+			err := runRemove(t, []string{"--all"})
+			require.NoError(t, err)
 
-	m, err := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
-	require.NoError(t, err)
-	assert.Empty(t, m.Installed)
+			m, err := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
+			require.NoError(t, err)
+			assert.Empty(t, m.Installed)
+		})
+	}
 }
 
-func TestRemoveCmd_AllPromptYesUppercase_Proceeds(t *testing.T) {
-	withXDG(t)
-	installFakeRefresher(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "Y\n")
+func TestRemoveCmd_AllPromptAborts(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{"empty_line", "\n"},
+		{"n", "n\n"},
+		{"garbage", "foo\n"},
+		{"eof", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			withXDG(t)
+			seedManifest(t, []string{"FiraCode"})
+			setTTY(t, true)
+			setStdin(t, tc.input)
 
-	err := runRemove(t, []string{"--all"})
-	require.NoError(t, err)
-}
+			err := runRemove(t, []string{"--all"})
+			require.Error(t, err)
+			assert.True(t, errors.Is(err, errAborted), "expected errAborted, got %v", err)
 
-func TestRemoveCmd_AllPromptYesWord_Proceeds(t *testing.T) {
-	withXDG(t)
-	installFakeRefresher(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "yes\n")
-
-	err := runRemove(t, []string{"--all"})
-	require.NoError(t, err)
-}
-
-func TestRemoveCmd_AllPromptEmpty_Aborts(t *testing.T) {
-	withXDG(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "\n")
-
-	err := runRemove(t, []string{"--all"})
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, errAborted), "expected errAborted, got %v", err)
-
-	// Manifest must be intact.
-	m, _ := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
-	assert.Len(t, m.Installed, 1)
-}
-
-func TestRemoveCmd_AllPromptNo_Aborts(t *testing.T) {
-	withXDG(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "n\n")
-
-	err := runRemove(t, []string{"--all"})
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, errAborted))
-}
-
-func TestRemoveCmd_AllPromptGarbage_Aborts(t *testing.T) {
-	withXDG(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "foo\n")
-
-	err := runRemove(t, []string{"--all"})
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, errAborted))
-}
-
-func TestRemoveCmd_AllPromptEOF_Aborts(t *testing.T) {
-	withXDG(t)
-	seedManifest(t, []string{"FiraCode"})
-	setTTY(t, true)
-	setStdin(t, "")
-
-	err := runRemove(t, []string{"--all"})
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, errAborted))
+			// Manifest must be intact.
+			m, _ := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
+			assert.Len(t, m.Installed, 1, "manifest must be intact after abort")
+		})
+	}
 }
 
 func TestRemoveCmd_AllPurgePromptText_WarnsAboutFiles(t *testing.T) {

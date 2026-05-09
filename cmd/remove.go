@@ -69,22 +69,20 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 					v.Info("no fonts to remove")
 					return nil
 				}
+				var installed, imported int
 				args = make([]string, 0, len(manifest.Installed))
-				for name := range manifest.Installed {
+				for name, entry := range manifest.Installed {
 					args = append(args, name)
+					if entry.IsImported() {
+						imported++
+					} else {
+						installed++
+					}
 				}
 				sort.Strings(args)
 
 				if !flagYes {
-					var installed, imported int
-					for _, name := range args {
-						if manifest.Installed[name].Release == state.ReleaseImported {
-							imported++
-						} else {
-							installed++
-						}
-					}
-					if err := confirmRemoveAll(v, installed, imported, flagPurge); err != nil {
+					if err := confirmRemoveAll(installed, imported, flagPurge); err != nil {
 						return err
 					}
 				}
@@ -151,7 +149,7 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 
 // confirmRemoveAll prompts the user via stderr and reads from stdinReader.
 // Returns nil to proceed, errAborted to cancel.
-func confirmRemoveAll(_ *ui.Verbosity, installed, imported int, purge bool) error {
+func confirmRemoveAll(installed, imported int, purge bool) error {
 	total := installed + imported
 	var msg string
 	switch {

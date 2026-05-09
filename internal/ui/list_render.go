@@ -99,7 +99,7 @@ func renderCell(name string, entry state.InstalledFont, isInstalled bool, colWid
 
 	// Font name — colored by install status.
 	if isInstalled {
-		if entry.Release == state.ReleaseImported {
+		if entry.IsImported() {
 			sb.WriteString(StyleWarn.Render(name))
 		} else {
 			sb.WriteString(StyleSuccess.Render(name))
@@ -141,7 +141,7 @@ func RenderInstalledTable(fonts []string, installed InstalledSet) string {
 				// Release column: color by value.
 				name := fonts[row]
 				if entry, ok := installed[name]; ok {
-					if entry.Release == state.ReleaseImported {
+					if entry.IsImported() {
 						return cellStyle.Inherit(StyleWarn)
 					}
 					return cellStyle.Inherit(StyleSuccess)
