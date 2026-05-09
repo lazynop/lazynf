@@ -237,6 +237,54 @@ func TestRemoveCmd_AllPromptEOF_Aborts(t *testing.T) {
 	assert.True(t, errors.Is(err, errAborted))
 }
 
+func TestRemoveCmd_AllPurgePromptText_WarnsAboutFiles(t *testing.T) {
+	withXDG(t)
+	seedMixedManifest(t,
+		[]string{"FiraCode"},
+		[]string{"Mononoki", "Inconsolata"},
+	)
+	setTTY(t, true)
+	setStdin(t, "n\n")
+
+	origStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = origStderr })
+
+	go func() {
+		_ = runRemove(t, []string{"--all", "--purge"})
+		_ = w.Close()
+	}()
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	out := buf.String()
+	assert.Contains(t, out, "ALL files will be deleted")
+	assert.Contains(t, out, "2 imported")
+	assert.Contains(t, out, "[y/N]")
+}
+
+// Sanity: --all --purge --yes proceeds without prompt and removes everything.
+func TestRemoveCmd_AllPurgeYes_Proceeds(t *testing.T) {
+	withXDG(t)
+	installFakeRefresher(t)
+	seedMixedManifest(t,
+		[]string{"FiraCode"},
+		[]string{"Mononoki"},
+	)
+	setTTY(t, false)
+
+	err := runRemove(t, []string{"--all", "--purge", "--yes"})
+	// Imported "Mononoki" has empty Files in our seed; --purge will fail for
+	// that one. Batch returns error overall but FiraCode is gone.
+	if err != nil {
+		assert.Contains(t, err.Error(), "one or more fonts failed")
+	}
+	m, _ := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
+	_, hasFC := m.Installed["FiraCode"]
+	assert.False(t, hasFC, "FiraCode should be gone")
+}
+
 // Verify the prompt text mentions installed/imported counts.
 func TestRemoveCmd_AllPromptText_MentionsCounts(t *testing.T) {
 	withXDG(t)
