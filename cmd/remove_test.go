@@ -98,3 +98,45 @@ func TestRemoveCmd_AllEmptyManifest_NoOp(t *testing.T) {
 	err := runRemove(t, []string{"--all", "--yes"})
 	require.NoError(t, err) // exit 0
 }
+
+// seedMixedManifest seeds a manifest with installed and imported entries.
+// Each installed entry has a real on-disk Dir under t.TempDir() so file
+// deletion in Remove succeeds (Files is empty so deleteFontFiles loops
+// zero times and then os.Remove on an empty Dir succeeds). Imported
+// entries point at /tmp paths that are not created — Remove de-adopts
+// them without touching disk.
+func seedMixedManifest(t *testing.T, installed, imported []string) {
+	t.Helper()
+	m := &state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion,
+		Installed:     map[string]state.InstalledFont{},
+	}
+	for _, n := range installed {
+		dir := filepath.Join(t.TempDir(), n)
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		m.Installed[n] = state.InstalledFont{Release: "v3.4.0", Dir: dir}
+	}
+	for _, n := range imported {
+		m.Installed[n] = state.InstalledFont{Release: state.ReleaseImported, Dir: "/tmp/" + n}
+	}
+	statePath := filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json")
+	require.NoError(t, m.Save(statePath))
+}
+
+func TestRemoveCmd_AllYes_RemovesEverything(t *testing.T) {
+	withXDG(t)
+	installFakeRefresher(t)
+	seedMixedManifest(t,
+		[]string{"FiraCode", "Hack", "JetBrainsMono"},
+		[]string{"Mononoki", "Inconsolata"},
+	)
+	setTTY(t, false)
+
+	err := runRemove(t, []string{"--all", "--yes"})
+	require.NoError(t, err)
+
+	statePath := filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json")
+	m, err := state.Load(statePath)
+	require.NoError(t, err)
+	assert.Empty(t, m.Installed, "manifest should be empty after --all --yes")
+}
