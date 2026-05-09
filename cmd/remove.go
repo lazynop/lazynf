@@ -3,13 +3,21 @@ package cmd
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 
+	cterm "github.com/charmbracelet/x/term"
 	"github.com/lazynop/lazynf/internal/fonts"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
+
+// checkTTY reports whether stdin is connected to a terminal. Overridable in
+// tests via assignment.
+var checkTTY = func() bool {
+	return cterm.IsTerminal(os.Stdin.Fd())
+}
 
 func newRemoveCmd() *cobra.Command {
 	var (
@@ -32,6 +40,9 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 			}
 			if !flagAll && len(args) == 0 {
 				return errors.New("specify font names or --all")
+			}
+			if flagAll && !flagYes && !checkTTY() {
+				return errors.New("--all requires --yes when stdin is not a terminal")
 			}
 			if flagAll {
 				return errors.New("--all not yet implemented")

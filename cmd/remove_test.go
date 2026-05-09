@@ -72,3 +72,15 @@ func TestRemoveCmd_YesWithoutAll_Accepted(t *testing.T) {
 	_, has := m.Installed["FiraCode"]
 	assert.False(t, has, "FiraCode should be gone")
 }
+
+func TestRemoveCmd_AllNonTTYWithoutYes_Errors(t *testing.T) {
+	withXDG(t)
+	// Force non-TTY for this test.
+	prev := checkTTY
+	checkTTY = func() bool { return false }
+	t.Cleanup(func() { checkTTY = prev })
+
+	err := runRemove(t, []string{"--all"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stdin is not a terminal")
+}
