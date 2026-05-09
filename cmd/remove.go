@@ -40,7 +40,7 @@ func newRemoveCmd() *cobra.Command {
 		flagYes            bool
 	)
 	c := &cobra.Command{
-		Use:   "remove <font>...",
+		Use:   "remove [<font>...]",
 		Short: "Remove installed fonts",
 		Long: `Removes one or more fonts. By default, fonts installed via "lazynf install"
 are deleted from disk and from the state manifest, while "imported" fonts are

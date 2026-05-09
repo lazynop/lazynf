@@ -20,6 +20,7 @@ lazynf update                            # refresh stale or imported fonts
 lazynf update --force                    # refresh even fonts already at the latest tag
 lazynf remove FiraCode                   # uninstall a font (deletes files + state entry)
 lazynf remove --purge JetBrainsMono      # also delete files for fonts that were imported
+lazynf remove --all --yes                # remove every font from the manifest (non-interactive)
 lazynf list                              # color grid of available fonts (TTY) / plain on pipe
 lazynf list --installed                  # bordered table of installed fonts
 lazynf search mono                       # find fonts by substring
