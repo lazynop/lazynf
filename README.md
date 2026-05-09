@@ -2,7 +2,7 @@
 
 Install [Nerd Fonts](https://www.nerdfonts.com/font-downloads) from your terminal.
 
-> **Status:** early development. MVP supports `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor` on Linux. No release tagged yet — build from source.
+> **Status:** early development. MVP supports `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor`, and shell `completion` on Linux and macOS. No release tagged yet — build from source.
 
 ## Install
 
@@ -58,7 +58,7 @@ Requires Go 1.25+ and (optionally) [`just`](https://github.com/casey/just).
 
 ## Status
 
-MVP — Linux only. Implemented: `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor`. Planned: macOS and Windows support, shell completion, and an interactive TUI.
+MVP. Implemented on Linux and macOS: `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor`, and shell `completion`. Planned: Windows support and an interactive TUI.
 
 ## License
 
