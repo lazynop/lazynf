@@ -111,8 +111,9 @@ func seedMixedManifest(t *testing.T, installed, imported []string) {
 		SchemaVersion: state.CurrentSchemaVersion,
 		Installed:     map[string]state.InstalledFont{},
 	}
+	base := t.TempDir()
 	for _, n := range installed {
-		dir := filepath.Join(t.TempDir(), n)
+		dir := filepath.Join(base, n)
 		require.NoError(t, os.MkdirAll(dir, 0o755))
 		m.Installed[n] = state.InstalledFont{Release: "v3.4.0", Dir: dir}
 	}
