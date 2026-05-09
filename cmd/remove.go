@@ -15,6 +15,8 @@ func newRemoveCmd() *cobra.Command {
 	var (
 		flagPurge          bool
 		flagNoCacheRefresh bool
+		flagAll            bool
+		flagYes            bool
 	)
 	c := &cobra.Command{
 		Use:   "remove <font>...",
@@ -23,9 +25,18 @@ func newRemoveCmd() *cobra.Command {
 are deleted from disk and from the state manifest, while "imported" fonts are
 only de-adopted from the manifest (their on-disk files are left intact). Use
 --purge to also delete the on-disk directory of imported fonts.`,
-		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: completeFromManifest,
 		RunE: func(_ *cobra.Command, args []string) error {
+			if flagAll && len(args) > 0 {
+				return errors.New("--all is mutually exclusive with positional font names")
+			}
+			if !flagAll && len(args) == 0 {
+				return errors.New("specify font names or --all")
+			}
+			if flagAll {
+				return errors.New("--all not yet implemented")
+			}
+
 			v := Verbosity()
 
 			showProgress := v.ShouldShowProgress()
@@ -82,6 +93,8 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 	}
 	c.Flags().BoolVar(&flagPurge, "purge", false, "also delete on-disk files for imported fonts")
 	c.Flags().BoolVar(&flagNoCacheRefresh, "no-cache-refresh", false, "skip the final fc-cache invocation")
+	c.Flags().BoolVar(&flagAll, "all", false, "remove every font in the manifest")
+	c.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip the confirmation prompt (required when stdin is not a terminal)")
 	return c
 }
 
