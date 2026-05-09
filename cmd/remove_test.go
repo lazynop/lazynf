@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/lazynop/lazynf/internal/fontcache"
@@ -140,4 +143,125 @@ func TestRemoveCmd_AllYes_RemovesEverything(t *testing.T) {
 	m, err := state.Load(statePath)
 	require.NoError(t, err)
 	assert.Empty(t, m.Installed, "manifest should be empty after --all --yes")
+}
+
+func setStdin(t *testing.T, input string) {
+	t.Helper()
+	prev := stdinReader
+	stdinReader = strings.NewReader(input)
+	t.Cleanup(func() { stdinReader = prev })
+}
+
+func TestRemoveCmd_AllPromptYes_Proceeds(t *testing.T) {
+	withXDG(t)
+	installFakeRefresher(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "y\n")
+
+	err := runRemove(t, []string{"--all"})
+	require.NoError(t, err)
+
+	m, err := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
+	require.NoError(t, err)
+	assert.Empty(t, m.Installed)
+}
+
+func TestRemoveCmd_AllPromptYesUppercase_Proceeds(t *testing.T) {
+	withXDG(t)
+	installFakeRefresher(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "Y\n")
+
+	err := runRemove(t, []string{"--all"})
+	require.NoError(t, err)
+}
+
+func TestRemoveCmd_AllPromptYesWord_Proceeds(t *testing.T) {
+	withXDG(t)
+	installFakeRefresher(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "yes\n")
+
+	err := runRemove(t, []string{"--all"})
+	require.NoError(t, err)
+}
+
+func TestRemoveCmd_AllPromptEmpty_Aborts(t *testing.T) {
+	withXDG(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "\n")
+
+	err := runRemove(t, []string{"--all"})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, errAborted), "expected errAborted, got %v", err)
+
+	// Manifest must be intact.
+	m, _ := state.Load(filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json"))
+	assert.Len(t, m.Installed, 1)
+}
+
+func TestRemoveCmd_AllPromptNo_Aborts(t *testing.T) {
+	withXDG(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "n\n")
+
+	err := runRemove(t, []string{"--all"})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, errAborted))
+}
+
+func TestRemoveCmd_AllPromptGarbage_Aborts(t *testing.T) {
+	withXDG(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "foo\n")
+
+	err := runRemove(t, []string{"--all"})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, errAborted))
+}
+
+func TestRemoveCmd_AllPromptEOF_Aborts(t *testing.T) {
+	withXDG(t)
+	seedManifest(t, []string{"FiraCode"})
+	setTTY(t, true)
+	setStdin(t, "")
+
+	err := runRemove(t, []string{"--all"})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, errAborted))
+}
+
+// Verify the prompt text mentions installed/imported counts.
+func TestRemoveCmd_AllPromptText_MentionsCounts(t *testing.T) {
+	withXDG(t)
+	seedMixedManifest(t,
+		[]string{"FiraCode", "Hack"}, // 2 installed
+		[]string{"Mononoki"},         // 1 imported
+	)
+	setTTY(t, true)
+	setStdin(t, "n\n")
+
+	origStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = origStderr })
+
+	go func() {
+		_ = runRemove(t, []string{"--all"})
+		_ = w.Close()
+	}()
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	out := buf.String()
+	assert.Contains(t, out, "3 font")
+	assert.Contains(t, out, "2 installed")
+	assert.Contains(t, out, "1 imported")
+	assert.Contains(t, out, "[y/N]")
 }

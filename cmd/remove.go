@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -21,6 +23,14 @@ import (
 var checkTTY = func() bool {
 	return cterm.IsTerminal(os.Stdin.Fd())
 }
+
+// stdinReader is the source of input for the confirmation prompt. Overridable
+// in tests.
+var stdinReader io.Reader = os.Stdin
+
+// errAborted is returned when the user declines the confirmation prompt.
+// Causes exit 1 via cmd.Exit() with a brief "aborted by user" message.
+var errAborted = errors.New("aborted by user")
 
 func newRemoveCmd() *cobra.Command {
 	var (
@@ -64,6 +74,20 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 					args = append(args, name)
 				}
 				sort.Strings(args)
+
+				if !flagYes {
+					var installed, imported int
+					for _, name := range args {
+						if manifest.Installed[name].Release == state.ReleaseImported {
+							imported++
+						} else {
+							installed++
+						}
+					}
+					if err := confirmRemoveAll(v, installed, imported, flagPurge); err != nil {
+						return err
+					}
+				}
 			}
 
 			showProgress := v.ShouldShowProgress()
@@ -123,6 +147,40 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 	c.Flags().BoolVar(&flagAll, "all", false, "remove every font in the manifest")
 	c.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip the confirmation prompt (required when stdin is not a terminal)")
 	return c
+}
+
+// confirmRemoveAll prompts the user via stderr and reads from stdinReader.
+// Returns nil to proceed, errAborted to cancel.
+func confirmRemoveAll(_ *ui.Verbosity, installed, imported int, purge bool) error {
+	total := installed + imported
+	var msg string
+	switch {
+	case purge:
+		msg = fmt.Sprintf(
+			"About to remove %d font(s) from the manifest. ALL files will be deleted from disk, including %d imported font(s) adopted from elsewhere.",
+			total, imported,
+		)
+	case imported > 0:
+		msg = fmt.Sprintf(
+			"About to remove %d font(s) from the manifest (%d installed will be deleted from disk; %d imported will be de-adopted, files left on disk).",
+			total, installed, imported,
+		)
+	default:
+		msg = fmt.Sprintf("About to remove %d font(s) from the manifest.", total)
+	}
+	fmt.Fprintln(os.Stderr, msg)
+	fmt.Fprint(os.Stderr, "Continue? [y/N] ")
+
+	reader := bufio.NewReader(stdinReader)
+	line, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return errAborted
+	}
+	line = strings.TrimSpace(strings.ToLower(line))
+	if line == "y" || line == "yes" {
+		return nil
+	}
+	return errAborted
 }
 
 func summarizeRemove(v *ui.Verbosity, res *fonts.RemoveResult) {
