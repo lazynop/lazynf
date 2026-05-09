@@ -47,13 +47,16 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 			if flagAll && !flagYes && !checkTTY() {
 				return errors.New("--all requires --yes when stdin is not a terminal")
 			}
+
+			v := Verbosity()
+
 			if flagAll {
 				manifest, err := state.Load(xdg.StateFile())
 				if err != nil {
 					return fmt.Errorf("load manifest: %w", err)
 				}
 				if len(manifest.Installed) == 0 {
-					Verbosity().Info("no fonts to remove")
+					v.Info("no fonts to remove")
 					return nil
 				}
 				args = make([]string, 0, len(manifest.Installed))
@@ -62,8 +65,6 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 				}
 				sort.Strings(args)
 			}
-
-			v := Verbosity()
 
 			showProgress := v.ShouldShowProgress()
 			var spin *ui.Spinner
