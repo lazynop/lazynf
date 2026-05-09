@@ -3,11 +3,14 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	cterm "github.com/charmbracelet/x/term"
 	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/state"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -45,7 +48,19 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 				return errors.New("--all requires --yes when stdin is not a terminal")
 			}
 			if flagAll {
-				return errors.New("--all not yet implemented")
+				manifest, err := state.Load(xdg.StateFile())
+				if err != nil {
+					return fmt.Errorf("load manifest: %w", err)
+				}
+				if len(manifest.Installed) == 0 {
+					Verbosity().Info("no fonts to remove")
+					return nil
+				}
+				args = make([]string, 0, len(manifest.Installed))
+				for name := range manifest.Installed {
+					args = append(args, name)
+				}
+				sort.Strings(args)
 			}
 
 			v := Verbosity()

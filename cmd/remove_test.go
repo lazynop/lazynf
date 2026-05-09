@@ -89,3 +89,12 @@ func TestRemoveCmd_AllNonTTYWithoutYes_Errors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "stdin is not a terminal")
 }
+
+func TestRemoveCmd_AllEmptyManifest_NoOp(t *testing.T) {
+	withXDG(t)
+	// No seedManifest call — manifest does not exist.
+	setTTY(t, false)
+
+	err := runRemove(t, []string{"--all", "--yes"})
+	require.NoError(t, err) // exit 0
+}
