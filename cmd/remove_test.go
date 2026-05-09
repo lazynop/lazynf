@@ -22,6 +22,14 @@ func installFakeRefresher(t *testing.T) {
 	t.Cleanup(func() { testRefresher = prev })
 }
 
+// setTTY swaps checkTTY for the duration of the test.
+func setTTY(t *testing.T, isTTY bool) {
+	t.Helper()
+	prev := checkTTY
+	checkTTY = func() bool { return isTTY }
+	t.Cleanup(func() { checkTTY = prev })
+}
+
 // runRemove builds the remove command in isolation and executes it with the
 // given args. It returns the error from RunE (nil on success). Stdout/stderr
 // are discarded for now; later tasks capture stderr to assert on prompt text.
@@ -75,10 +83,7 @@ func TestRemoveCmd_YesWithoutAll_Accepted(t *testing.T) {
 
 func TestRemoveCmd_AllNonTTYWithoutYes_Errors(t *testing.T) {
 	withXDG(t)
-	// Force non-TTY for this test.
-	prev := checkTTY
-	checkTTY = func() bool { return false }
-	t.Cleanup(func() { checkTTY = prev })
+	setTTY(t, false)
 
 	err := runRemove(t, []string{"--all"})
 	require.Error(t, err)
