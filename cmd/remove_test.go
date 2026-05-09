@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,8 +29,8 @@ func runRemove(t *testing.T, args []string) error {
 	t.Helper()
 	c := newRemoveCmd()
 	c.SetArgs(args)
-	c.SetOut(os.NewFile(0, os.DevNull))
-	c.SetErr(os.NewFile(0, os.DevNull))
+	c.SetOut(io.Discard)
+	c.SetErr(io.Discard)
 	return c.Execute()
 }
 
@@ -44,12 +45,17 @@ func TestRemoveCmd_NoArgsNoAll_Errors(t *testing.T) {
 func TestRemoveCmd_ArgsAndAll_Errors(t *testing.T) {
 	withXDG(t)
 	installFakeRefresher(t)
+	seedManifest(t, []string{"FiraCode"})
+
 	err := runRemove(t, []string{"FiraCode", "--all"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mutually exclusive")
+
+	// Manifest must not be touched.
 	statePath := filepath.Join(os.Getenv("XDG_DATA_HOME"), "lazynf", "state.json")
-	_, err = state.Load(statePath)
+	m, err := state.Load(statePath)
 	require.NoError(t, err)
+	assert.Contains(t, m.Installed, "FiraCode", "manifest must not be touched")
 }
 
 // --yes without --all is silently accepted: it behaves identically to
