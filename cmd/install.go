@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -34,93 +34,107 @@ func newInstallCmd() *cobra.Command {
 			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
-			params := fonts.InstallParams{
-				Names:        args,
+			eng := engine.New(engine.Deps{
 				FontDir:      fontDir,
 				StatePath:    xdg.StateFile(),
 				CatalogPath:  xdg.CatalogFile(),
 				ArchivesDir:  xdg.ArchivesDir(),
 				GitHub:       gh,
 				AssetURLBase: assetURLBase(),
-				Refresher:    refresher(),
-			}
+				FontCache:    refresher(),
+			})
 
 			showProgress := v.ShouldShowProgress()
-			var bars = map[string]*ui.ProgressTracker{}
+			bars := map[string]*ui.ProgressTracker{}
 			var spin *ui.Spinner
 
-			opts := fonts.InstallOptions{
+			var (
+				successes []string
+				skipped   []string
+				failures  = map[string]error{}
+			)
+
+			opts := engine.InstallOptions{
 				Force:            flagForce,
 				KeepArchive:      flagKeepArchive,
 				SkipCacheRefresh: flagNoCacheRefr,
-				OnProgress: func(font string, written, total int64) {
-					if !showProgress {
-						return
-					}
-					b, ok := bars[font]
-					if !ok || b == nil {
-						return
-					}
-					var pct float64
-					if total > 0 {
-						pct = float64(written) / float64(total)
-					}
-					b.Update(pct, "")
-				},
-				OnEvent: func(e fonts.Event) {
-					switch e.Kind {
-					case fonts.EventDownloadStart:
-						if showProgress {
-							b := ui.NewProgress("Downloading " + e.Font)
-							b.Start()
-							bars[e.Font] = b
-						} else {
-							v.Info("Downloading %s...", e.Font)
-						}
-					case fonts.EventDownloadDone:
-						// Bar stays open until install success/failure to avoid flicker
-					case fonts.EventInstallSuccess:
-						if b := bars[e.Font]; b != nil {
-							b.Finish()
-							delete(bars, e.Font)
-						} else {
-							v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Font)
-						}
-					case fonts.EventInstallSkipped:
-						v.Info("%s %s (already installed)", ui.StyleDim.Render("•"), e.Font)
-					case fonts.EventInstallError:
-						if b := bars[e.Font]; b != nil {
-							b.Fail(e.Err.Error())
-							delete(bars, e.Font)
-						} else if e.Font == "" && e.Err != nil {
-							// Soft error (e.g. fc-cache failure): no per-font bar, warn on stderr.
-							v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
-						}
-						// (per-font final summary line is printed below)
-					case fonts.EventCacheRefresh:
-						if showProgress {
-							spin = ui.NewSpinner("Refreshing font cache")
-							spin.Start()
-						} else {
-							v.Info("Refreshing font cache...")
-						}
-					}
-				},
 			}
 
-			res, err := fonts.Install(context.Background(), params, opts)
-			if spin != nil {
-				spin.Stop(err == nil)
+			ctx := context.Background()
+			for _, tag := range args {
+				handle := eng.Install(ctx, tag, opts)
+				for ev := range handle.Events {
+					switch e := ev.(type) {
+					case engine.LogEvent:
+						if e.Message == "downloading" {
+							if showProgress {
+								b := ui.NewProgress("Downloading " + e.Target)
+								b.Start()
+								bars[e.Target] = b
+							} else {
+								v.Info("Downloading %s...", e.Target)
+							}
+						}
+					case engine.ProgressEvent:
+						if !showProgress {
+							continue
+						}
+						b := bars[e.Target]
+						if b == nil {
+							continue
+						}
+						var pct float64
+						if e.Total > 0 {
+							pct = float64(e.Written) / float64(e.Total)
+						}
+						b.Update(pct, "")
+					case engine.StartedEvent:
+						if e.Kind == "fc-cache" {
+							if showProgress {
+								spin = ui.NewSpinner("Refreshing font cache")
+								spin.Start()
+							} else {
+								v.Info("Refreshing font cache...")
+							}
+						}
+					case engine.CompletedEvent:
+						switch e.Kind {
+						case engine.CompletedSuccess:
+							if b := bars[e.Target]; b != nil {
+								b.Finish()
+								delete(bars, e.Target)
+							} else {
+								v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Target)
+							}
+							successes = append(successes, e.Target)
+						case engine.CompletedSkipped:
+							v.Info("%s %s (already installed)", ui.StyleDim.Render("•"), e.Target)
+							skipped = append(skipped, e.Target)
+						}
+					case engine.FailedEvent:
+						if b := bars[e.Target]; b != nil {
+							b.Fail(e.Err.Error())
+							delete(bars, e.Target)
+						} else if e.Target == "" && e.Err != nil {
+							// Soft error (e.g. fc-cache failure): warn on stderr.
+							v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
+						}
+						if e.Target != "" && e.Err != nil {
+							failures[e.Target] = e.Err
+						}
+					}
+				}
 			}
-			if err != nil {
-				return err
+
+			if spin != nil {
+				spin.Stop(len(failures) == 0)
 			}
 
 			// Summary
-			if v.Level != ui.LevelQuiet || len(res.Failures) > 0 {
-				summarize(v, res)
+			if v.Level != ui.LevelQuiet || len(failures) > 0 {
+				summarizeEngine(v, successes, skipped, failures)
 			}
-			if len(res.Failures) > 0 {
+			if len(failures) > 0 {
 				return errors.New("one or more fonts failed to install")
 			}
 			return nil
@@ -133,15 +147,15 @@ func newInstallCmd() *cobra.Command {
 	return c
 }
 
-func summarize(v *ui.Verbosity, res *fonts.InstallResult) {
-	if len(res.Successes) > 0 {
-		v.Info("%s installed: %s", ui.StyleSuccess.Render("✓"), strings.Join(res.Successes, ", "))
+func summarizeEngine(v *ui.Verbosity, successes, skipped []string, failures map[string]error) {
+	if len(successes) > 0 {
+		v.Info("%s installed: %s", ui.StyleSuccess.Render("✓"), strings.Join(successes, ", "))
 	}
-	if len(res.Skipped) > 0 {
-		v.Info("%s already installed: %s", ui.StyleDim.Render("•"), strings.Join(res.Skipped, ", "))
+	if len(skipped) > 0 {
+		v.Info("%s already installed: %s", ui.StyleDim.Render("•"), strings.Join(skipped, ", "))
 	}
-	if len(res.Failures) > 0 {
-		for name, err := range res.Failures {
+	if len(failures) > 0 {
+		for name, err := range failures {
 			v.Errorf("%s %s: %s", ui.StyleFailure.Render("✗"), name, err.Error())
 		}
 	}
