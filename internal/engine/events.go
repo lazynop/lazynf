@@ -16,9 +16,10 @@ type Event interface {
 	GetOpID() OpID
 }
 
-// StartedEvent marks the start of a sub-operation (e.g. install of a single
-// tag inside a batch). For single-target ops, OpID and Target coincide with
-// the only element.
+// StartedEvent marks the start of a sub-operation. A single op may emit
+// multiple StartedEvents to delimit successive sub-phases (e.g. "install"
+// at op entry, then "fc-cache" after extraction completes). For single-
+// target ops, OpID and Target coincide with the only element.
 type StartedEvent struct {
 	OpID   OpID
 	Target string // font tag, "" for ops without target (e.g. RunDoctor)

@@ -8,3 +8,8 @@ type OpHandle struct {
 	Events  <-chan Event
 	Resolve func(token int64, choice ConflictChoice)
 }
+
+// noopResolve is the Resolve function for OpHandles that do not (yet) emit
+// ConflictEvent. Tasks 6-10 reuse this. Plan 2 will replace with real
+// resolution for adapters that emit conflicts.
+func noopResolve(_ int64, _ ConflictChoice) {}

@@ -33,18 +33,11 @@ type InstallOptions struct {
 // are added in Plan 2.
 func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) OpHandle {
 	opID := e.nextOpID()
-	ch := make(chan Event, 32)
+	em := newEmitter(ctx)
 
 	go func() {
-		defer close(ch)
-		send := func(ev Event) {
-			select {
-			case ch <- ev:
-			case <-ctx.Done():
-			}
-		}
-
-		send(StartedEvent{OpID: opID, Target: tag, Kind: "install"})
+		defer em.Close()
+		em.Send(StartedEvent{OpID: opID, Target: tag, Kind: "install"})
 
 		fontDir := opts.Dest
 		if fontDir == "" {
@@ -66,7 +59,7 @@ func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) O
 			KeepArchive:      opts.KeepArchive,
 			SkipCacheRefresh: opts.SkipCacheRefresh,
 			OnProgress: func(font string, written, total int64) {
-				send(ProgressEvent{
+				em.Send(ProgressEvent{
 					OpID:    opID,
 					Target:  font,
 					Stage:   "download",
@@ -75,34 +68,27 @@ func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) O
 				})
 			},
 			OnEvent: func(fe fonts.Event) {
-				translateInstallEvent(opID, fe, send)
+				translateInstallEvent(opID, fe, em.Send)
 			},
 		}
 
-		var err error
-		retryErr := retry(ctx, func() error {
-			_, err = fonts.Install(ctx, params, fontsOpts)
-			if err != nil && isRetriableNetErr(err) {
-				return err
-			}
-			return nil
+		err := retryCall(ctx, func() error {
+			_, ferr := fonts.Install(ctx, params, fontsOpts)
+			return ferr
 		})
-		if err == nil {
-			err = retryErr
-		}
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
-				send(CanceledEvent{OpID: opID, Target: tag})
+				em.Send(CanceledEvent{OpID: opID, Target: tag})
 				return
 			}
-			send(FailedEvent{OpID: opID, Target: tag, Err: err, Retriable: isRetriableNetErr(err)})
+			em.Send(FailedEvent{OpID: opID, Target: tag, Err: err, Retriable: isRetriableNetErr(err)})
 		}
 		// Per-font Completed/Failed have already been emitted by translateInstallEvent.
 	}()
 
 	return OpHandle{
-		Events:  ch,
-		Resolve: func(token int64, choice ConflictChoice) {}, // no-op in Plan 1
+		Events:  em.Events(),
+		Resolve: noopResolve,
 	}
 }
 

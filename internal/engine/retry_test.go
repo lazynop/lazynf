@@ -89,3 +89,18 @@ func TestRetry_RespectsContextCancel(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	require.GreaterOrEqual(t, calls, 1)
 }
+
+func TestRetryCall_ReturnsActualError(t *testing.T) {
+	orig := retryDelays
+	retryDelays = []time.Duration{0, 5 * time.Millisecond, 10 * time.Millisecond}
+	t.Cleanup(func() { retryDelays = orig })
+
+	want := errors.New("not retriable")
+	calls := 0
+	err := retryCall(context.Background(), func() error {
+		calls++
+		return want
+	})
+	require.Same(t, want, err)
+	require.Equal(t, 1, calls)
+}
