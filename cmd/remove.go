@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	cterm "github.com/charmbracelet/x/term"
-	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/state"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
@@ -91,27 +91,33 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 			showProgress := v.ShouldShowProgress()
 			var spin *ui.Spinner
 
-			params := fonts.RemoveParams{
-				Names:     args,
-				StatePath: xdg.StateFile(),
-				Refresher: refresher(),
-			}
-			opts := fonts.RemoveOptions{
+			eng := engine.New(engine.Deps{
+				FontDir:      xdg.DefaultFontDir(),
+				StatePath:    xdg.StateFile(),
+				CatalogPath:  xdg.CatalogFile(),
+				ArchivesDir:  xdg.ArchivesDir(),
+				GitHub:       newGitHubClient(),
+				AssetURLBase: assetURLBase(),
+				FontCache:    refresher(),
+			})
+
+			opts := engine.RemoveOptions{
 				Purge:            flagPurge,
 				SkipCacheRefresh: flagNoCacheRefresh,
-				OnEvent: func(e fonts.Event) {
-					switch e.Kind {
-					case fonts.EventRemoveSuccess:
-						v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Font)
-					case fonts.EventRemoveDeadopt:
-						v.Info("%s %s (de-adopted)", ui.StyleDim.Render("•"), e.Font)
-					case fonts.EventRemoveError:
-						if e.Font == "" && e.Err != nil {
-							// Soft error from fc-cache.
-							v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
-						}
-						// Per-font errors are surfaced by summarizeRemove below.
-					case fonts.EventCacheRefresh:
+			}
+
+			var (
+				removed   []string
+				deadopted []string
+				failures  = map[string]error{}
+			)
+
+			ctx := context.Background()
+			handle := eng.Remove(ctx, args, opts)
+			for ev := range handle.Events {
+				switch e := ev.(type) {
+				case engine.StartedEvent:
+					if e.Kind == "fc-cache" {
 						if showProgress {
 							spin = ui.NewSpinner("Refreshing font cache")
 							spin.Start()
@@ -119,22 +125,36 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 							v.Info("Refreshing font cache...")
 						}
 					}
-				},
+				case engine.CompletedEvent:
+					switch e.Kind {
+					case engine.CompletedSuccess:
+						v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Target)
+						removed = append(removed, e.Target)
+					case engine.CompletedDeadopted:
+						v.Info("%s %s (de-adopted)", ui.StyleDim.Render("•"), e.Target)
+						deadopted = append(deadopted, e.Target)
+					}
+				case engine.FailedEvent:
+					if e.Target == "" && e.Err != nil {
+						// Soft error from fc-cache.
+						v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
+						continue
+					}
+					if e.Target != "" && e.Err != nil {
+						failures[e.Target] = e.Err
+					}
+				}
 			}
 
-			res, err := fonts.Remove(context.Background(), params, opts)
 			if spin != nil {
-				spin.Stop(err == nil)
-			}
-			if err != nil {
-				return err
+				spin.Stop(len(failures) == 0)
 			}
 
-			if v.Level != ui.LevelQuiet || len(res.Failures) > 0 {
-				summarizeRemove(v, res)
+			if v.Level != ui.LevelQuiet || len(failures) > 0 {
+				summarizeRemove(v, removed, deadopted, failures)
 			}
 
-			if len(res.Failures) > 0 {
+			if len(failures) > 0 {
 				return errors.New("one or more fonts failed to remove")
 			}
 			return nil
@@ -181,16 +201,16 @@ func confirmRemoveAll(installed, imported int, purge bool) error {
 	return errAborted
 }
 
-func summarizeRemove(v *ui.Verbosity, res *fonts.RemoveResult) {
-	if len(res.Removed) > 0 {
-		v.Info("%s removed: %s", ui.StyleSuccess.Render("✓"), strings.Join(res.Removed, ", "))
+func summarizeRemove(v *ui.Verbosity, removed, deadopted []string, failures map[string]error) {
+	if len(removed) > 0 {
+		v.Info("%s removed: %s", ui.StyleSuccess.Render("✓"), strings.Join(removed, ", "))
 	}
-	if len(res.Deadopted) > 0 {
+	if len(deadopted) > 0 {
 		v.Info("%s de-adopted (files left on disk): %s",
-			ui.StyleDim.Render("•"), strings.Join(res.Deadopted, ", "))
+			ui.StyleDim.Render("•"), strings.Join(deadopted, ", "))
 	}
-	if len(res.Failures) > 0 {
-		for _, err := range res.Failures {
+	if len(failures) > 0 {
+		for _, err := range failures {
 			v.Errorf("%s %s", ui.StyleFailure.Render("✗"), err.Error())
 		}
 	}
