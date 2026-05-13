@@ -34,6 +34,10 @@ func (e *Engine) Update(ctx context.Context, tags []string, opts UpdateOptions) 
 		defer em.Close()
 		em.Send(StartedEvent{OpID: opID, Kind: "update"})
 
+		// Tracks per-tag failures already surfaced via OnEvent so the
+		// post-call sweep of result.Failures doesn't double-emit.
+		emittedFailures := map[string]struct{}{}
+
 		params := fonts.UpdateParams{
 			Names:        tags,
 			FontDir:      e.deps.FontDir,
@@ -58,12 +62,17 @@ func (e *Engine) Update(ctx context.Context, tags []string, opts UpdateOptions) 
 				})
 			},
 			OnEvent: func(fe fonts.Event) {
+				if fe.Kind == fonts.EventInstallError {
+					emittedFailures[fe.Font] = struct{}{}
+				}
 				translateUpdateEvent(opID, fe, em.Send)
 			},
 		}
 
+		var result *fonts.UpdateResult
 		err := retryCall(ctx, func() error {
-			_, ferr := fonts.Update(ctx, params, fontsOpts)
+			res, ferr := fonts.Update(ctx, params, fontsOpts)
+			result = res
 			return ferr
 		})
 		if err != nil {
@@ -72,6 +81,19 @@ func (e *Engine) Update(ctx context.Context, tags []string, opts UpdateOptions) 
 				return
 			}
 			em.Send(FailedEvent{OpID: opID, Err: err, Retriable: isRetriableNetErr(err)})
+			return
+		}
+		// fonts.Update records per-tag failures (e.g. "not installed" for
+		// named tags absent from the manifest) in result.Failures without
+		// emitting EventInstallError. Surface them here, skipping any tag
+		// already reported through the OnEvent path to avoid double-emits.
+		if result != nil {
+			for tag, ferr := range result.Failures {
+				if _, dup := emittedFailures[tag]; dup {
+					continue
+				}
+				em.Send(FailedEvent{OpID: opID, Target: tag, Err: ferr})
+			}
 		}
 	}()
 
@@ -91,6 +113,8 @@ func translateUpdateEvent(opID OpID, fe fonts.Event, send func(Event)) {
 		send(LogEvent{OpID: opID, Target: fe.Font, Level: LevelInfo, Message: "downloading"})
 	case fonts.EventExtractStart:
 		send(LogEvent{OpID: opID, Target: fe.Font, Level: LevelInfo, Message: "extracting"})
+	case fonts.EventExtractDone:
+		send(LogEvent{OpID: opID, Target: fe.Font, Level: LevelInfo, Message: "extracted"})
 	case fonts.EventCacheRefresh:
 		send(StartedEvent{OpID: opID, Kind: "fc-cache"})
 	case fonts.EventInstallSuccess:
