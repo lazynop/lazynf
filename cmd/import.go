@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -45,43 +45,56 @@ func newImportCmd() *cobra.Command {
 			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
-			params := fonts.ImportParams{
-				Names:        args,
-				All:          flagAll,
-				Detect:       flagDetect,
-				Force:        flagForce,
+			eng := engine.New(engine.Deps{
 				FontDir:      fontDir,
 				StatePath:    xdg.StateFile(),
 				CatalogPath:  xdg.CatalogFile(),
-				AssetURLBase: assetURLBase(),
+				ArchivesDir:  xdg.ArchivesDir(),
 				GitHub:       gh,
+				AssetURLBase: assetURLBase(),
+				FontCache:    refresher(),
+			})
+
+			opts := engine.ImportOptions{
+				All:    flagAll,
+				Detect: flagDetect,
+				Force:  flagForce,
 			}
 
-			opts := fonts.ImportOptions{
-				OnEvent: func(e fonts.Event) {
-					switch e.Kind {
-					case fonts.EventImportStart:
-						v.Debugf("importing %s…", e.Font)
-					case fonts.EventImportSuccess:
-						v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Font)
-					case fonts.EventImportSkipped:
-						v.Info("%s %s (already in state, use --force to re-import)", ui.StyleDim.Render("•"), e.Font)
-					case fonts.EventImportError:
-						// Per-font errors are surfaced in the final summary below.
+			var (
+				imported []string
+				skipped  []string
+				failures = map[string]error{}
+			)
+
+			ctx := context.Background()
+			handle := eng.Import(ctx, args, opts)
+			for ev := range handle.Events {
+				switch e := ev.(type) {
+				case engine.LogEvent:
+					if e.Message == "importing" {
+						v.Debugf("importing %s…", e.Target)
 					}
-				},
+				case engine.CompletedEvent:
+					switch e.Kind {
+					case engine.CompletedSuccess:
+						v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Target)
+						imported = append(imported, e.Target)
+					case engine.CompletedSkipped:
+						v.Info("%s %s (already in state, use --force to re-import)", ui.StyleDim.Render("•"), e.Target)
+						skipped = append(skipped, e.Target)
+					}
+				case engine.FailedEvent:
+					if e.Target != "" && e.Err != nil {
+						failures[e.Target] = e.Err
+					}
+				}
 			}
 
-			res, err := fonts.Import(context.Background(), params, opts)
-			if err != nil {
-				return err
+			if v.Level != ui.LevelQuiet || len(failures) > 0 {
+				summarizeImport(v, imported, skipped, failures)
 			}
-
-			// Summary
-			if v.Level != ui.LevelQuiet || len(res.Failures) > 0 {
-				summarizeImport(v, res)
-			}
-			if len(res.Failures) > 0 {
+			if len(failures) > 0 {
 				return errors.New("one or more fonts failed to import")
 			}
 			return nil
@@ -94,15 +107,15 @@ func newImportCmd() *cobra.Command {
 	return c
 }
 
-func summarizeImport(v *ui.Verbosity, res *fonts.ImportResult) {
-	if len(res.Imported) > 0 {
-		v.Info("%s imported: %s", ui.StyleSuccess.Render("✓"), strings.Join(res.Imported, ", "))
+func summarizeImport(v *ui.Verbosity, imported, skipped []string, failures map[string]error) {
+	if len(imported) > 0 {
+		v.Info("%s imported: %s", ui.StyleSuccess.Render("✓"), strings.Join(imported, ", "))
 	}
-	if len(res.Skipped) > 0 {
-		v.Info("%s already in state: %s", ui.StyleDim.Render("•"), strings.Join(res.Skipped, ", "))
+	if len(skipped) > 0 {
+		v.Info("%s already in state: %s", ui.StyleDim.Render("•"), strings.Join(skipped, ", "))
 	}
-	if len(res.Failures) > 0 {
-		for name, err := range res.Failures {
+	if len(failures) > 0 {
+		for name, err := range failures {
 			v.Errorf("%s %s: %s", ui.StyleFailure.Render("✗"), name, err.Error())
 		}
 	}
