@@ -1,3 +1,9 @@
+// Package engine exposes an event-driven API for font operations (install,
+// update, remove, import, doctor, refresh). Both the CLI sub-commands and
+// the future TUI consume this package; the underlying logic in
+// internal/fonts and internal/doctor is wrapped here so the synchronous,
+// callback-based API of those packages is exposed as a uniform stream of
+// Events on a channel via OpHandle.
 package engine
 
 import (

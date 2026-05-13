@@ -68,7 +68,7 @@ type CompletedKind int
 const (
 	CompletedSuccess   CompletedKind = iota
 	CompletedSkipped                 // already at the requested state
-	CompletedDeadopted                // imported font removed from manifest, files left
+	CompletedDeadopted               // imported font removed from manifest, files left
 )
 
 // CompletedEvent indicates that the sub-op for Target finished successfully.
