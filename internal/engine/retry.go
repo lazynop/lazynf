@@ -11,8 +11,12 @@ import (
 var retryDelays = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second}
 
 // isRetriableNetErr reports whether err is a transient network error worth
-// retrying. Deliberately conservative: only timeouts, refused connections,
-// and DNS-flavored failures. HTTP 4xx is NOT retriable (server-definitive).
+// retrying. Currently conservative: only matches net.Error implementations
+// whose Timeout() returns true. Explicitly NOT retried: HTTP non-2xx
+// (server-definitive), connection refused (not a net.Error.Timeout()),
+// context cancellation/deadline. Extending coverage to ECONNREFUSED or
+// transient DNS errors is a future enhancement — keep it tight for now to
+// avoid masking real failures.
 func isRetriableNetErr(err error) bool {
 	if err == nil {
 		return false
