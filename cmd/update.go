@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -37,69 +37,61 @@ already at the latest release.`,
 			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
-			params := fonts.UpdateParams{
-				Names:        args,
+			eng := engine.New(engine.Deps{
 				FontDir:      fontDir,
 				StatePath:    xdg.StateFile(),
 				CatalogPath:  xdg.CatalogFile(),
 				ArchivesDir:  xdg.ArchivesDir(),
 				GitHub:       gh,
 				AssetURLBase: assetURLBase(),
-				Refresher:    refresher(),
-			}
+				FontCache:    refresher(),
+			})
 
 			showProgress := v.ShouldShowProgress()
-			var bars = map[string]*ui.ProgressTracker{}
+			bars := map[string]*ui.ProgressTracker{}
 			var spin *ui.Spinner
 
-			opts := fonts.UpdateOptions{
+			var (
+				updated      []string
+				alreadyFresh []string
+				failures     = map[string]error{}
+			)
+
+			opts := engine.UpdateOptions{
 				Force:            flagForce,
 				KeepArchive:      flagKeepArchive,
 				SkipCacheRefresh: flagNoCacheRefr,
-				OnProgress: func(font string, written, total int64) {
-					if !showProgress {
-						return
+			}
+
+			ctx := context.Background()
+			handle := eng.Update(ctx, args, opts)
+			for ev := range handle.Events {
+				switch e := ev.(type) {
+				case engine.LogEvent:
+					if e.Message == "downloading" {
+						if showProgress {
+							b := ui.NewProgress("Downloading " + e.Target)
+							b.Start()
+							bars[e.Target] = b
+						} else {
+							v.Info("Downloading %s...", e.Target)
+						}
 					}
-					b, ok := bars[font]
-					if !ok || b == nil {
-						return
+				case engine.ProgressEvent:
+					if !showProgress {
+						continue
+					}
+					b := bars[e.Target]
+					if b == nil {
+						continue
 					}
 					var pct float64
-					if total > 0 {
-						pct = float64(written) / float64(total)
+					if e.Total > 0 {
+						pct = float64(e.Written) / float64(e.Total)
 					}
 					b.Update(pct, "")
-				},
-				OnEvent: func(e fonts.Event) {
-					switch e.Kind {
-					case fonts.EventDownloadStart:
-						if showProgress {
-							b := ui.NewProgress("Downloading " + e.Font)
-							b.Start()
-							bars[e.Font] = b
-						} else {
-							v.Info("Downloading %s...", e.Font)
-						}
-					case fonts.EventDownloadDone:
-						// Bar stays open until install success/failure to avoid flicker.
-					case fonts.EventInstallSuccess:
-						if b := bars[e.Font]; b != nil {
-							b.Finish()
-							delete(bars, e.Font)
-						} else {
-							v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Font)
-						}
-					case fonts.EventInstallSkipped:
-						v.Info("%s %s (already installed)", ui.StyleDim.Render("•"), e.Font)
-					case fonts.EventInstallError:
-						if b := bars[e.Font]; b != nil {
-							b.Fail(e.Err.Error())
-							delete(bars, e.Font)
-						} else if e.Font == "" && e.Err != nil {
-							// Soft error (e.g. fc-cache failure): warn on stderr.
-							v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
-						}
-					case fonts.EventCacheRefresh:
+				case engine.StartedEvent:
+					if e.Kind == "fc-cache" {
 						if showProgress {
 							spin = ui.NewSpinner("Refreshing font cache")
 							spin.Start()
@@ -107,22 +99,43 @@ already at the latest release.`,
 							v.Info("Refreshing font cache...")
 						}
 					}
-				},
+				case engine.CompletedEvent:
+					switch e.Kind {
+					case engine.CompletedSuccess:
+						if b := bars[e.Target]; b != nil {
+							b.Finish()
+							delete(bars, e.Target)
+						} else {
+							v.Info("%s %s", ui.StyleSuccess.Render("✓"), e.Target)
+						}
+						updated = append(updated, e.Target)
+					case engine.CompletedSkipped:
+						v.Info("%s %s (already installed)", ui.StyleDim.Render("•"), e.Target)
+						alreadyFresh = append(alreadyFresh, e.Target)
+					}
+				case engine.FailedEvent:
+					if b := bars[e.Target]; b != nil {
+						b.Fail(e.Err.Error())
+						delete(bars, e.Target)
+					} else if e.Target == "" && e.Err != nil {
+						// Soft error (e.g. fc-cache failure): warn on stderr.
+						v.Errorf("%s %s", ui.StyleWarn.Render("!"), e.Err.Error())
+					}
+					if e.Target != "" && e.Err != nil {
+						failures[e.Target] = e.Err
+					}
+				}
 			}
 
-			res, err := fonts.Update(context.Background(), params, opts)
 			if spin != nil {
-				spin.Stop(err == nil)
-			}
-			if err != nil {
-				return err
+				spin.Stop(len(failures) == 0)
 			}
 
-			if v.Level != ui.LevelQuiet || len(res.Failures) > 0 {
-				summarizeUpdate(v, res)
+			if v.Level != ui.LevelQuiet || len(failures) > 0 {
+				summarizeUpdate(v, updated, alreadyFresh, failures)
 			}
 
-			if len(res.Failures) > 0 {
+			if len(failures) > 0 {
 				return errors.New("one or more fonts failed to update")
 			}
 			return nil
@@ -135,19 +148,19 @@ already at the latest release.`,
 	return c
 }
 
-func summarizeUpdate(v *ui.Verbosity, res *fonts.UpdateResult) {
-	if len(res.Updated) == 0 && len(res.Failures) == 0 {
+func summarizeUpdate(v *ui.Verbosity, updated, alreadyFresh []string, failures map[string]error) {
+	if len(updated) == 0 && len(failures) == 0 {
 		v.Info("All installed fonts are up to date.")
 		return
 	}
-	if len(res.Updated) > 0 {
-		v.Info("%s updated: %s", ui.StyleSuccess.Render("✓"), strings.Join(res.Updated, ", "))
+	if len(updated) > 0 {
+		v.Info("%s updated: %s", ui.StyleSuccess.Render("✓"), strings.Join(updated, ", "))
 	}
-	if len(res.AlreadyFresh) > 0 {
-		v.Info("%s already up to date: %s", ui.StyleDim.Render("•"), strings.Join(res.AlreadyFresh, ", "))
+	if len(alreadyFresh) > 0 {
+		v.Info("%s already up to date: %s", ui.StyleDim.Render("•"), strings.Join(alreadyFresh, ", "))
 	}
-	if len(res.Failures) > 0 {
-		for name, err := range res.Failures {
+	if len(failures) > 0 {
+		for name, err := range failures {
 			v.Errorf("%s %s: %s", ui.StyleFailure.Render("✗"), name, err.Error())
 		}
 	}
