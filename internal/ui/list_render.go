@@ -13,11 +13,9 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/state"
 )
-
-// InstalledSet is a lookup map from font name to its manifest entry.
-type InstalledSet = map[string]state.InstalledFont
 
 const (
 	// colPadding is the number of spaces appended after each cell.
@@ -27,27 +25,43 @@ const (
 	timestampLayout = "2006-01-02 15:04"
 )
 
+// isInstalled reports whether a FontInfo represents a font present on disk
+// (any non-Available status counts as installed for rendering purposes).
+func isInstalled(fi engine.FontInfo) bool {
+	return fi.Status != engine.StatusAvailable
+}
+
+// releaseLabel returns the release string to display for a FontInfo:
+// the ReleaseImported sentinel for imported fonts, otherwise the Version
+// field as recorded in the manifest.
+func releaseLabel(fi engine.FontInfo) string {
+	if fi.Status == engine.StatusImported {
+		return state.ReleaseImported
+	}
+	return fi.Version
+}
+
 // RenderCatalogGrid renders the full font catalog as a multi-column
 // color-coded grid that fits termWidth terminal columns.
 //
-// fonts must be sorted (alphabetical). installed maps font names present in the
-// manifest; a nil map is treated as empty (no installed fonts).
+// infos must be sorted (alphabetical) — engine.List already returns sorted
+// slices.
 //
 // Each cell is just the font name, colored by install status:
 //   - green/bold if installed with a real release tag
-//   - yellow/bold if installed with the ReleaseImported sentinel
-//   - plain if not installed
+//   - yellow/bold if imported (ReleaseImported sentinel)
+//   - plain if not installed (StatusAvailable)
 //
 // A one-line legend is appended after the grid.
-func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) string {
-	if len(fonts) == 0 {
+func RenderCatalogGrid(infos []engine.FontInfo, termWidth int) string {
+	if len(infos) == 0 {
 		return ""
 	}
 
 	// Compute the width of the widest font name.
 	nameWidth := 0
-	for _, n := range fonts {
-		if w := utf8.RuneCountInString(n); w > nameWidth {
+	for _, fi := range infos {
+		if w := utf8.RuneCountInString(fi.Name); w > nameWidth {
 			nameWidth = w
 		}
 	}
@@ -55,7 +69,7 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 	colWidth := nameWidth + colPadding
 	numCols := max(termWidth/colWidth, 1)
 
-	numFonts := len(fonts)
+	numFonts := len(infos)
 	numRows := (numFonts + numCols - 1) / numCols
 
 	// Build each column as a slice of strings (one per row).
@@ -69,9 +83,7 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 				// Pad empty cells so columns stay aligned.
 				sb.WriteString(strings.Repeat(" ", colWidth))
 			} else {
-				name := fonts[idx]
-				entry, isInstalled := installed[name]
-				sb.WriteString(renderCell(name, entry, isInstalled, colWidth))
+				sb.WriteString(renderCell(infos[idx], colWidth))
 			}
 			if row < numRows-1 {
 				sb.WriteRune('\n')
@@ -94,22 +106,21 @@ func RenderCatalogGrid(fonts []string, installed InstalledSet, termWidth int) st
 
 // renderCell returns a single grid cell of exactly colWidth visible characters.
 // The cell is just the font name, colored by install status (no inline status text).
-func renderCell(name string, entry state.InstalledFont, isInstalled bool, colWidth int) string {
+func renderCell(fi engine.FontInfo, colWidth int) string {
 	var sb strings.Builder
 
 	// Font name — colored by install status.
-	if isInstalled {
-		if entry.IsImported() {
-			sb.WriteString(StyleWarn.Render(name))
-		} else {
-			sb.WriteString(StyleSuccess.Render(name))
-		}
-	} else {
-		sb.WriteString(name)
+	switch {
+	case fi.Status == engine.StatusImported:
+		sb.WriteString(StyleWarn.Render(fi.Name))
+	case isInstalled(fi):
+		sb.WriteString(StyleSuccess.Render(fi.Name))
+	default:
+		sb.WriteString(fi.Name)
 	}
 
 	// Pad to colWidth (name occupies nameWidth visible chars).
-	remaining := colWidth - utf8.RuneCountInString(name)
+	remaining := colWidth - utf8.RuneCountInString(fi.Name)
 	if remaining > 0 {
 		sb.WriteString(strings.Repeat(" ", remaining))
 	}
@@ -117,12 +128,13 @@ func renderCell(name string, entry state.InstalledFont, isInstalled bool, colWid
 	return sb.String()
 }
 
-// RenderInstalledTable renders the installed-fonts manifest as a bordered
-// table with columns: FONT | RELEASE | INSTALLED AT.
+// RenderInstalledTable renders the installed-fonts list as a bordered table
+// with columns: FONT | RELEASE | INSTALLED AT.
 //
-// fonts must be sorted. installed is the full manifest map.
-func RenderInstalledTable(fonts []string, installed InstalledSet) string {
-	if len(fonts) == 0 {
+// infos must contain only entries the caller wants displayed (typically the
+// engine.List output filtered to non-Available statuses). It must be sorted.
+func RenderInstalledTable(infos []engine.FontInfo) string {
+	if len(infos) == 0 {
 		return "(no fonts installed)"
 	}
 
@@ -139,22 +151,19 @@ func RenderInstalledTable(fonts []string, installed InstalledSet) string {
 			}
 			if col == 1 {
 				// Release column: color by value.
-				name := fonts[row]
-				if entry, ok := installed[name]; ok {
-					if entry.IsImported() {
-						return cellStyle.Inherit(StyleWarn)
-					}
-					return cellStyle.Inherit(StyleSuccess)
+				fi := infos[row]
+				if fi.Status == engine.StatusImported {
+					return cellStyle.Inherit(StyleWarn)
 				}
+				return cellStyle.Inherit(StyleSuccess)
 			}
 			return cellStyle
 		}).
 		Headers("FONT", "RELEASE", "INSTALLED AT")
 
-	for _, name := range fonts {
-		entry := installed[name]
-		ts := entry.InstalledAt.Local().Format(timestampLayout)
-		t.Row(name, entry.Release, ts)
+	for _, fi := range infos {
+		ts := fi.InstalledAt.Local().Format(timestampLayout)
+		t.Row(fi.Name, releaseLabel(fi), ts)
 	}
 
 	return t.Render()
@@ -162,23 +171,29 @@ func RenderInstalledTable(fonts []string, installed InstalledSet) string {
 
 // RenderCatalogPlain renders the font catalog as plain text: one font name per
 // line, no ANSI sequences. Suitable for piped / non-TTY output.
-func RenderCatalogPlain(fonts []string) string {
-	if len(fonts) == 0 {
+func RenderCatalogPlain(infos []engine.FontInfo) string {
+	if len(infos) == 0 {
 		return ""
 	}
-	return strings.Join(fonts, "\n")
+	names := make([]string, len(infos))
+	for i, fi := range infos {
+		names[i] = fi.Name
+	}
+	return strings.Join(names, "\n")
 }
 
 // RenderInstalledPlain renders the installed-font list as tab-separated
 // `<name>\t<release>` lines with no ANSI sequences. Suitable for awk/cut.
-func RenderInstalledPlain(fonts []string, installed InstalledSet) string {
-	if len(fonts) == 0 {
+//
+// infos must contain only the rows the caller wants emitted (typically
+// engine.List output filtered to non-Available statuses).
+func RenderInstalledPlain(infos []engine.FontInfo) string {
+	if len(infos) == 0 {
 		return ""
 	}
-	lines := make([]string, len(fonts))
-	for i, name := range fonts {
-		entry := installed[name]
-		lines[i] = fmt.Sprintf("%s\t%s", name, entry.Release)
+	lines := make([]string, len(infos))
+	for i, fi := range infos {
+		lines[i] = fmt.Sprintf("%s\t%s", fi.Name, releaseLabel(fi))
 	}
 	return strings.Join(lines, "\n")
 }

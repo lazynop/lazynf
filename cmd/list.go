@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"sort"
 
 	cterm "github.com/charmbracelet/x/term"
-	"github.com/lazynop/lazynf/internal/fonts"
-	"github.com/lazynop/lazynf/internal/state"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -21,21 +20,31 @@ func newListCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			v := Verbosity()
 
+			gh := newGitHubClient()
+			v.Debugf("github auth source: %s", gh.AuthSource())
+
+			eng := engine.New(engine.Deps{
+				FontDir:      xdg.DefaultFontDir(),
+				StatePath:    xdg.StateFile(),
+				CatalogPath:  xdg.CatalogFile(),
+				ArchivesDir:  xdg.ArchivesDir(),
+				GitHub:       gh,
+				AssetURLBase: assetURLBase(),
+				FontCache:    refresher(),
+			})
+
+			infos, err := eng.List(context.Background())
+			if err != nil {
+				return err
+			}
+
 			if flagInstalled {
-				m, err := state.Load(xdg.StateFile())
-				if err != nil {
-					return err
-				}
-				names := make([]string, 0, len(m.Installed))
-				for n := range m.Installed {
-					names = append(names, n)
-				}
-				sort.Strings(names)
+				installed := filterInstalled(infos)
 
 				if v.ShouldShowProgress() {
-					fmt.Fprintln(v.Stdout, ui.RenderInstalledTable(names, m.Installed))
+					fmt.Fprintln(v.Stdout, ui.RenderInstalledTable(installed))
 				} else {
-					plain := ui.RenderInstalledPlain(names, m.Installed)
+					plain := ui.RenderInstalledPlain(installed)
 					if plain != "" {
 						fmt.Fprintln(v.Stdout, plain)
 					}
@@ -43,29 +52,14 @@ func newListCmd() *cobra.Command {
 				return nil
 			}
 
-			gh := newGitHubClient()
-			v.Debugf("github auth source: %s", gh.AuthSource())
-
-			cat, err := fonts.ResolveCatalog(gh, xdg.CatalogFile())
-			if err != nil {
-				return err
-			}
-
 			if v.ShouldShowProgress() {
-				// TTY: resolve installed state for color markers.
-				m, _ := state.Load(xdg.StateFile())
-				installed := map[string]state.InstalledFont{}
-				if m != nil {
-					installed = m.Installed
-				}
-
 				termWidth := terminalWidth(os.Stdout)
-				grid := ui.RenderCatalogGrid(cat.Fonts, installed, termWidth)
+				grid := ui.RenderCatalogGrid(infos, termWidth)
 				if grid != "" {
 					fmt.Fprintln(v.Stdout, grid)
 				}
 			} else {
-				plain := ui.RenderCatalogPlain(cat.Fonts)
+				plain := ui.RenderCatalogPlain(infos)
 				if plain != "" {
 					fmt.Fprintln(v.Stdout, plain)
 				}
@@ -75,6 +69,18 @@ func newListCmd() *cobra.Command {
 	}
 	c.Flags().BoolVar(&flagInstalled, "installed", false, "show only installed fonts")
 	return c
+}
+
+// filterInstalled returns the subset of infos representing fonts present on
+// disk (any status other than Available).
+func filterInstalled(infos []engine.FontInfo) []engine.FontInfo {
+	out := make([]engine.FontInfo, 0, len(infos))
+	for _, fi := range infos {
+		if fi.Status != engine.StatusAvailable {
+			out = append(out, fi)
+		}
+	}
+	return out
 }
 
 // terminalWidth returns the width of the given file's terminal, or a safe

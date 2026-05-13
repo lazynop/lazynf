@@ -1,7 +1,9 @@
 package cmd
 
 import (
-	"github.com/lazynop/lazynf/internal/fonts"
+	"context"
+
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
@@ -16,12 +18,22 @@ func newSearchCmd() *cobra.Command {
 			gh := newGitHubClient()
 			v.Debugf("github auth source: %s", gh.AuthSource())
 
-			cat, err := fonts.ResolveCatalog(gh, xdg.CatalogFile())
+			eng := engine.New(engine.Deps{
+				FontDir:      xdg.DefaultFontDir(),
+				StatePath:    xdg.StateFile(),
+				CatalogPath:  xdg.CatalogFile(),
+				ArchivesDir:  xdg.ArchivesDir(),
+				GitHub:       gh,
+				AssetURLBase: assetURLBase(),
+				FontCache:    refresher(),
+			})
+
+			infos, err := eng.Search(context.Background(), args[0])
 			if err != nil {
 				return err
 			}
-			for _, n := range fonts.Search(cat.Fonts, args[0]) {
-				v.Info("%s", n)
+			for _, fi := range infos {
+				v.Info("%s", fi.Name)
 			}
 			return nil
 		},
