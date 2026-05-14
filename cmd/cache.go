@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"os"
 
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
@@ -14,8 +16,56 @@ func newCacheCmd() *cobra.Command {
 		Use:   "cache",
 		Short: "Manage lazynf's catalog cache",
 	}
+	c.AddCommand(newCacheRefreshCmd())
 	c.AddCommand(newCacheCleanCmd())
 	return c
+}
+
+func newCacheRefreshCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "refresh",
+		Short: "Force a fresh fetch of the Nerd Fonts catalog",
+		Long: `Removes the local catalog cache and re-fetches the latest release tag and
+asset list from GitHub. Useful when a new Nerd Fonts release has just shipped
+and you want to pick it up without waiting for the normal cache TTL.`,
+		Args: cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			v := Verbosity()
+
+			gh := newGitHubClient()
+			v.Debugf("github auth source: %s", gh.AuthSource())
+
+			eng := engine.New(engine.Deps{
+				FontDir:      xdg.DefaultFontDir(),
+				StatePath:    xdg.StateFile(),
+				CatalogPath:  xdg.CatalogFile(),
+				ArchivesDir:  xdg.ArchivesDir(),
+				GitHub:       gh,
+				AssetURLBase: assetURLBase(),
+				FontCache:    refresher(),
+			})
+
+			var opErr error
+			handle := eng.RefreshCatalog(context.Background())
+			for ev := range handle.Events {
+				switch e := ev.(type) {
+				case engine.StartedEvent:
+					if e.Kind == "catalog-fetch" {
+						v.Info("Refreshing catalog...")
+					}
+				case engine.CompletedEvent:
+					if e.Kind == engine.CompletedSuccess {
+						v.Info("%s catalog refreshed", ui.StyleSuccess.Render("✓"))
+					}
+				case engine.FailedEvent:
+					if e.Err != nil {
+						opErr = e.Err
+					}
+				}
+			}
+			return opErr
+		},
+	}
 }
 
 func newCacheCleanCmd() *cobra.Command {
