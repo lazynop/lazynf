@@ -44,8 +44,10 @@ func (e *Engine) RunDoctor(ctx context.Context) OpHandle {
 			em.Send(DoctorSectionEvent{
 				OpID:    opID,
 				Section: c.Section,
+				Title:   c.Title,
 				Status:  translateSeverity(c.Severity),
-				Detail:  combineDetailHint(c.Detail, c.Hint),
+				Detail:  c.Detail,
+				Hint:    c.Hint,
 				Action:  doctorActionFor(c),
 			})
 		}
@@ -84,20 +86,4 @@ func doctorActionFor(c doctor.Check) DoctorAction {
 		return ActionRefreshFontCache
 	}
 	return ActionNone
-}
-
-// combineDetailHint joins Detail and Hint with a separator if both are
-// non-empty. The Hint typically holds the remediation suggestion which is
-// useful to surface in the TUI alongside the failing detail.
-func combineDetailHint(detail, hint string) string {
-	switch {
-	case detail == "" && hint == "":
-		return ""
-	case hint == "":
-		return detail
-	case detail == "":
-		return hint
-	default:
-		return detail + " — " + hint
-	}
 }

@@ -122,11 +122,17 @@ func (e ConflictEvent) isEngineEvent() {}
 func (e ConflictEvent) GetOpID() OpID  { return e.OpID }
 
 // DoctorSectionEvent is emitted by RunDoctor for each section completed.
+//
+// One event is emitted per underlying doctor.Check, so a single Section may
+// produce multiple events (e.g. "XDG paths" emits one event per probed dir,
+// each with a distinct Title).
 type DoctorSectionEvent struct {
 	OpID    OpID
-	Section string // "paths", "fc-cache", "auth", "manifest", "catalog", "orphans"
+	Section string // "XDG paths", "fc-cache", "GitHub auth", "Manifest", "Catalog cache", "Orphan directories"
+	Title   string // short label within the section, e.g. "font dir", "schema version"
 	Status  DoctorStatus
-	Detail  string
+	Detail  string       // human-readable detail; never combined with Hint
+	Hint    string       // optional remediation suggestion; empty when Status==DoctorOK
 	Action  DoctorAction // None / RefreshCatalog / RefreshFontCache / ...
 }
 

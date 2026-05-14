@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/lazynop/lazynf/internal/doctor"
+	"github.com/lazynop/lazynf/internal/engine"
 	"github.com/lazynop/lazynf/internal/ui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,22 +20,22 @@ import (
 // where TAG is WARN/FAIL and section-tag is the canonical short label per
 // doctor.SectionTag.
 func TestRenderDoctorPlain_FormatAndSpecCompliance(t *testing.T) {
-	res := &doctor.Result{Checks: []doctor.Check{
+	sections := []engine.DoctorSectionEvent{
 		// OK lines must be skipped on the plain output.
-		{Section: doctor.SectionPaths, Title: "font dir", Severity: doctor.SeverityOK, Detail: "/x/fonts"},
+		{Section: doctor.SectionPaths, Title: "font dir", Status: engine.DoctorOK, Detail: "/x/fonts"},
 		// Spec-listed tags: auth (not "github"), orphan (not "orphans").
-		{Section: doctor.SectionGitHub, Title: "auth source", Severity: doctor.SeverityWarn,
+		{Section: doctor.SectionGitHub, Title: "auth source", Status: engine.DoctorWarn,
 			Detail: "anonymous (subject to lower rate limits)"},
-		{Section: doctor.SectionOrphans, Title: "scan", Severity: doctor.SeverityWarn,
+		{Section: doctor.SectionOrphans, Title: "scan", Status: engine.DoctorWarn,
 			Detail: "1 orphan(s): Hack"},
 		// FAIL line.
-		{Section: doctor.SectionManifest, Title: "state.json", Severity: doctor.SeverityFail,
+		{Section: doctor.SectionManifest, Title: "state.json", Status: engine.DoctorFail,
 			Detail: "parse error: invalid character"},
-	}}
+	}
 
 	var buf bytes.Buffer
 	v := &ui.Verbosity{Level: ui.LevelNormal, Stdout: &buf, Stderr: &buf}
-	renderDoctorPlain(v, res)
+	renderDoctorPlain(v, sections)
 
 	out := buf.String()
 
@@ -55,12 +56,12 @@ func TestRenderDoctorPlain_FormatAndSpecCompliance(t *testing.T) {
 }
 
 func TestRenderDoctorPlain_FallbackForUnknownSection(t *testing.T) {
-	res := &doctor.Result{Checks: []doctor.Check{
-		{Section: "Made Up Section", Title: "x", Severity: doctor.SeverityWarn, Detail: "detail"},
-	}}
+	sections := []engine.DoctorSectionEvent{
+		{Section: "Made Up Section", Title: "x", Status: engine.DoctorWarn, Detail: "detail"},
+	}
 	var buf bytes.Buffer
 	v := &ui.Verbosity{Level: ui.LevelNormal, Stdout: &buf, Stderr: &buf}
-	renderDoctorPlain(v, res)
+	renderDoctorPlain(v, sections)
 	// Fallback lowercases the section name and replaces spaces with '-'
 	// so the field-by-position contract holds for parsers like `awk '{print $2}'`.
 	assert.Contains(t, buf.String(), "WARN made-up-section detail")
