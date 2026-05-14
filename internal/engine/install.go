@@ -72,7 +72,7 @@ func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) O
 			},
 		}
 
-		err := retryCall(ctx, func() error {
+		err := retry(ctx, func() error {
 			_, ferr := fonts.Install(ctx, params, fontsOpts)
 			return ferr
 		})

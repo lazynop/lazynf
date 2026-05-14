@@ -32,33 +32,11 @@ func isRetriableNetErr(err error) bool {
 }
 
 // retry runs fn up to 3 times (1 + 2 retries) with exponential backoff
-// 1s/2s/4s. It returns immediately on ctx.Done(). Returns the last error
-// observed if every attempt fails.
+// 1s/2s/4s. Retriable network errors trigger a backoff and another attempt;
+// non-retriable errors are returned immediately. If ctx fires during a
+// backoff sleep, returns ctx.Err(). Otherwise returns the last error fn
+// produced (which the caller can inspect via errors.Is/As).
 func retry(ctx context.Context, fn func() error) error {
-	err := fn()
-	if err == nil || !isRetriableNetErr(err) {
-		return err
-	}
-	for _, d := range retryDelays[1:] {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(d):
-		}
-		err = fn()
-		if err == nil || !isRetriableNetErr(err) {
-			return err
-		}
-	}
-	return err
-}
-
-// retryCall runs fn up to 3 times with the same backoff as retry, returning
-// the LAST error fn produced (whether retriable or not). If ctx fires during
-// a backoff sleep, returns ctx.Err() instead. Use this when the caller wants
-// the call's actual error surfaced — unlike retry, retryable errors are
-// transparently retried but non-retriable errors are returned immediately.
-func retryCall(ctx context.Context, fn func() error) error {
 	err := fn()
 	if err == nil || !isRetriableNetErr(err) {
 		return err

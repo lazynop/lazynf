@@ -27,7 +27,7 @@ func (e *Engine) RefreshCatalog(ctx context.Context) OpHandle {
 			return
 		}
 
-		err := retryCall(ctx, func() error {
+		err := retry(ctx, func() error {
 			_, ferr := fonts.ResolveCatalog(e.deps.GitHub, e.deps.CatalogPath)
 			return ferr
 		})

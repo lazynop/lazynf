@@ -70,7 +70,7 @@ func (e *Engine) Update(ctx context.Context, tags []string, opts UpdateOptions) 
 		}
 
 		var result *fonts.UpdateResult
-		err := retryCall(ctx, func() error {
+		err := retry(ctx, func() error {
 			res, ferr := fonts.Update(ctx, params, fontsOpts)
 			result = res
 			return ferr

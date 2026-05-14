@@ -26,7 +26,7 @@ type ImportOptions struct {
 // on the returned channel. The channel closes at termination.
 //
 // fonts.Import may hit the network only when Detect is true (to fetch release
-// asset hashes); the whole call is wrapped in retryCall so transient timeouts
+// asset hashes); the whole call is wrapped in retry so transient timeouts
 // during detection are retried.
 func (e *Engine) Import(ctx context.Context, names []string, opts ImportOptions) OpHandle {
 	opID := e.nextOpID()
@@ -57,7 +57,7 @@ func (e *Engine) Import(ctx context.Context, names []string, opts ImportOptions)
 		}
 
 		var result *fonts.ImportResult
-		err := retryCall(ctx, func() error {
+		err := retry(ctx, func() error {
 			r, ferr := fonts.Import(ctx, params, fontsOpts)
 			result = r
 			return ferr
