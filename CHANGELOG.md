@@ -12,6 +12,7 @@ All notable changes to lazynf are documented here. Format follows [Keep a Change
 - `lazynf list [--installed]` — multi-column color-coded grid on a TTY (green ✓ + release tag for installed, yellow for imported), with a one-line legend pointing to `--installed` for full details. `--installed` renders a bordered table (font / release / installed at). Pipe / redirected output stays plain (one font per line, or `<name>\t<release>` for `--installed`) for scripts.
 - `lazynf search <query>` — case-insensitive substring search over the catalog.
 - `lazynf cache clean` — clear the catalog cache and any kept archives (idempotent).
+- `lazynf cache refresh` — force a fresh fetch of the Nerd Fonts catalog, bypassing the freshness check.
 - `lazynf doctor` — diagnoses lazynf's environment and state. Reports on font directories, fc-cache availability, GitHub auth source, manifest integrity, catalog cache freshness, and orphan directories. No network calls and no automatic fixes — points to the existing commands (`list`, `import`, `update`, `remove`) that resolve each issue.
 - Shell completion via `lazynf completion {bash|zsh|fish|powershell}`. Tab completion suggests font names dynamically: catalog entries for `install`, manifest entries for `update`/`remove`, orphan candidates for `import`. No network calls — completion silently returns no suggestions when the catalog cache is absent (run `lazynf list` to populate).
 - Best-effort batch installs: per-font failures are reported in a final summary and do not abort the run.
