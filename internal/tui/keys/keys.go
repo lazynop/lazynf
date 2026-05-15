@@ -37,6 +37,7 @@ type KeyMap struct {
 	ConfirmYes    key.Binding
 	ConfirmNo     key.Binding
 	ConfirmForce  key.Binding
+	ConfirmAdopt  key.Binding
 	ConfirmCancel key.Binding
 
 	shortHelp []key.Binding
@@ -72,6 +73,7 @@ func Default() KeyMap {
 		ConfirmYes:    key.NewBinding(key.WithKeys("y", "enter"), key.WithHelp("y/enter", "yes")),
 		ConfirmNo:     key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "no")),
 		ConfirmForce:  key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "force")),
+		ConfirmAdopt:  key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "adopt")),
 		ConfirmCancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 	}
 	k.shortHelp = []key.Binding{k.Up, k.Down, k.Filter, k.Install, k.Remove, k.Help, k.Quit}

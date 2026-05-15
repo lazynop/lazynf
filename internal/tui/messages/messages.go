@@ -105,6 +105,7 @@ const (
 	ChoiceYes
 	ChoiceCancel
 	ChoiceForce
+	ChoiceAdopt // user chose to register existing on-disk files in the manifest
 )
 
 // Pane identifies which sub-model currently has keyboard focus.

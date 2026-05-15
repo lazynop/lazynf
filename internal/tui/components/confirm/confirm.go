@@ -31,6 +31,9 @@ type Model struct {
 
 	// AllowForce makes 'f' available as a third choice (destructive ops).
 	AllowForce bool
+	// AllowAdopt makes 'a' available as an extra choice for FilesOnDisk
+	// conflicts (register the on-disk files in the manifest).
+	AllowAdopt bool
 
 	// Width is the parent terminal width used for centering.
 	Width int
@@ -59,6 +62,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceNo})
 	case m.AllowForce && key.Matches(kmsg, m.Keys.ConfirmForce):
 		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceForce})
+	case m.AllowAdopt && key.Matches(kmsg, m.Keys.ConfirmAdopt):
+		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceAdopt})
 	case key.Matches(kmsg, m.Keys.ConfirmCancel):
 		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceCancel})
 	}
@@ -68,8 +73,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the centered modal.
 func (m Model) View() tea.View {
 	hints := dim.Render("y/enter: yes  n: no  esc: cancel")
-	if m.AllowForce {
+	switch {
+	case m.AllowForce && m.AllowAdopt:
+		hints = dim.Render("y/enter: yes  n: no  f: force  a: adopt  esc: cancel")
+	case m.AllowForce:
 		hints = dim.Render("y/enter: yes  n: no  f: force  esc: cancel")
+	case m.AllowAdopt:
+		hints = dim.Render("y/enter: yes  n: no  a: adopt  esc: cancel")
 	}
 
 	body := titleStyle.Render(m.Title) + "\n\n" + m.Body + "\n\n" + hints

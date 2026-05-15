@@ -59,10 +59,11 @@ type Model struct {
 	doctor    doctor.Model
 	help      help.Model
 
-	pending  map[int64]tea.Msg
-	tokens   atomic.Int64
-	inFlight map[engine.OpID]engine.OpHandle
-	bootErr  error
+	pending         map[int64]tea.Msg
+	pendingConflict map[int64]engine.OpID
+	tokens          atomic.Int64
+	inFlight        map[engine.OpID]engine.OpHandle
+	bootErr         error
 }
 
 // New constructs the root model. eng must already be wired with its Deps.
@@ -70,20 +71,21 @@ func New(eng *engine.Engine) *Model {
 	ctx, cancel := context.WithCancel(context.Background())
 	k := keys.Default()
 	return &Model{
-		engine:    eng,
-		ctx:       ctx,
-		cancel:    cancel,
-		keys:      k,
-		focused:   messages.PaneFontlist,
-		fontlist:  fontlist.New(k),
-		detail:    detail.New(),
-		logpane:   logpane.New(logpane.NewFileLogger(xdg.StateHome())),
-		statusbar: statusbar.New(k),
-		confirm:   confirm.New(k, 0, "", ""),
-		doctor:    doctor.New(k),
-		help:      help.New(k),
-		pending:   map[int64]tea.Msg{},
-		inFlight:  map[engine.OpID]engine.OpHandle{},
+		engine:          eng,
+		ctx:             ctx,
+		cancel:          cancel,
+		keys:            k,
+		focused:         messages.PaneFontlist,
+		fontlist:        fontlist.New(k),
+		detail:          detail.New(),
+		logpane:         logpane.New(logpane.NewFileLogger(xdg.StateHome())),
+		statusbar:       statusbar.New(k),
+		confirm:         confirm.New(k, 0, "", ""),
+		doctor:          doctor.New(k),
+		help:            help.New(k),
+		pending:         map[int64]tea.Msg{},
+		pendingConflict: map[int64]engine.OpID{},
+		inFlight:        map[engine.OpID]engine.OpHandle{},
 	}
 }
 
@@ -269,6 +271,17 @@ type quitMsg struct{}
 // opened the modal, looping forever.
 func (m *Model) handleConfirmResult(x messages.ConfirmResultMsg) (tea.Model, tea.Cmd) {
 	m.overlay = OverlayNone
+
+	// Conflict path: the token comes from an engine.ConflictEvent. Look up
+	// the originating OpHandle and call Resolve.
+	if opID, ok := m.pendingConflict[x.Token]; ok {
+		delete(m.pendingConflict, x.Token)
+		if h, found := m.inFlight[opID]; found {
+			h.Resolve(x.Token, translateChoice(x.Choice))
+		}
+		return m, nil
+	}
+
 	pending, ok := m.pending[x.Token]
 	if !ok {
 		return m, nil
@@ -295,6 +308,23 @@ func (m *Model) handleConfirmResult(x messages.ConfirmResultMsg) (tea.Model, tea
 func (m *Model) routeEngineEvent(x messages.EngineEventMsg) (tea.Model, tea.Cmd) {
 	lp, _ := m.logpane.Update(x)
 	m.logpane = lp.(logpane.Model)
+
+	if ce, ok := x.Ev.(engine.ConflictEvent); ok {
+		body := conflictBody(ce.Kind, ce.Target)
+		title := "Conflict for " + ce.Target
+		m.confirm = confirm.New(m.keys, ce.Token, title, body)
+		m.confirm.AllowForce = containsChoice(ce.Choices, engine.ChoiceForce)
+		m.confirm.AllowAdopt = containsChoice(ce.Choices, engine.ChoiceImportAs)
+		m.confirm.Width, m.confirm.Height = m.width, m.height
+		m.overlay = OverlayConfirm
+		m.pendingConflict[ce.Token] = x.OpID
+		// Re-arm drain so we keep reading events for this op (the channel stays
+		// open — the engine is blocked on Resolve).
+		if h, ok := m.inFlight[x.OpID]; ok {
+			return m, drain.EngineCmdCtx(m.ctx, x.OpID, h.Events)
+		}
+		return m, nil
+	}
 
 	if ce, ok := x.Ev.(engine.CompletedEvent); ok && ce.NewState != nil {
 		fl, _ := m.fontlist.Update(messages.FontStateChangedMsg{Font: *ce.NewState})
@@ -381,4 +411,39 @@ func joinShort(tags []string) string {
 		return tags[0] + ", " + tags[1] + ", ... +" + strconv.Itoa(len(tags)-2)
 	}
 	return strings.Join(tags, ", ")
+}
+
+// conflictBody renders the modal body for a given ConflictKind / target.
+func conflictBody(k engine.ConflictKind, target string) string {
+	switch k {
+	case engine.ConflictAlreadyImported:
+		return target + " is already tracked as imported. Replace with managed version?"
+	case engine.ConflictFilesOnDisk:
+		return target + " has files on disk outside lazynf. Choose how to proceed."
+	}
+	return "Unknown conflict"
+}
+
+// containsChoice reports whether the slice contains want.
+func containsChoice(slice []engine.ConflictChoice, want engine.ConflictChoice) bool {
+	for _, c := range slice {
+		if c == want {
+			return true
+		}
+	}
+	return false
+}
+
+// translateChoice maps a modal ConfirmChoice to the engine ConflictChoice
+// expected by OpHandle.Resolve.
+func translateChoice(c messages.ConfirmChoice) engine.ConflictChoice {
+	switch c {
+	case messages.ChoiceYes, messages.ChoiceForce:
+		return engine.ChoiceForce
+	case messages.ChoiceAdopt:
+		return engine.ChoiceImportAs
+	case messages.ChoiceNo, messages.ChoiceCancel:
+		return engine.ChoiceSkip
+	}
+	return engine.ChoiceSkip
 }
