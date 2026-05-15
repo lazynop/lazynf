@@ -8,7 +8,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/x/term"
+	"github.com/lazynop/lazynf/internal/engine"
+	"github.com/lazynop/lazynf/internal/tui"
 	"github.com/lazynop/lazynf/internal/ui"
+	"github.com/lazynop/lazynf/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +27,7 @@ func NewRoot(version string) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "lazynf",
 		Short:         "Install Nerd Fonts from your terminal",
-		Long:          "lazynf installs, lists, and searches Nerd Fonts. (TUI mode coming in a future release.)",
+		Long:          "lazynf installs, lists, and searches Nerd Fonts. Run with no arguments on a TTY for the interactive TUI.",
 		Version:       version,
 		SilenceErrors: true, // we render errors ourselves
 		SilenceUsage:  true,
@@ -34,7 +38,20 @@ func NewRoot(version string) *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cmd.Help()
+			if !isTerminal() {
+				return cmd.Help()
+			}
+			gh := newGitHubClient()
+			eng := engine.New(engine.Deps{
+				FontDir:      xdg.DefaultFontDir(),
+				StatePath:    xdg.StateFile(),
+				CatalogPath:  xdg.CatalogFile(),
+				ArchivesDir:  xdg.ArchivesDir(),
+				GitHub:       gh,
+				AssetURLBase: assetURLBase(),
+				FontCache:    refresher(),
+			})
+			return tui.Run(eng)
 		},
 	}
 
@@ -72,4 +89,11 @@ func Exit(err error) int {
 	}
 	fmt.Fprintln(os.Stderr, ui.StyleFailure.Render("error: ")+err.Error())
 	return 1
+}
+
+// isTerminal reports whether stdout is a real terminal (TTY). The TUI is
+// only launched when stdout is a TTY; piping or redirecting falls back to
+// cobra's help output.
+func isTerminal() bool {
+	return term.IsTerminal(uintptr(os.Stdout.Fd()))
 }
