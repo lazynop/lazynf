@@ -3,6 +3,7 @@ package statusbar
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 
@@ -39,4 +40,28 @@ func TestRender_NarrowWidthDoesNotPanic(t *testing.T) {
 	m := New(keys.Default())
 	m.Width = 20
 	_ = m.View()
+}
+
+func TestRender_ZeroWidth_UsesDefault(t *testing.T) {
+	m := New(keys.Default())
+	require.NotEmpty(t, m.View().Content)
+}
+
+func TestInit_ReturnsNil(t *testing.T) {
+	require.Nil(t, New(keys.Default()).Init())
+}
+
+func TestUpdate_WindowSize_TracksWidth(t *testing.T) {
+	m := New(keys.Default())
+	out, cmd := m.Update(tea.WindowSizeMsg{Width: 123, Height: 24})
+	require.Nil(t, cmd)
+	require.Equal(t, 123, out.(Model).Width)
+}
+
+func TestUpdate_OtherMsg_IsNoOp(t *testing.T) {
+	m := New(keys.Default())
+	m.Width = 42
+	out, cmd := m.Update("not a window size")
+	require.Nil(t, cmd)
+	require.Equal(t, 42, out.(Model).Width)
 }
