@@ -39,33 +39,51 @@ func (e *Engine) Import(ctx context.Context, names []string, opts ImportOptions)
 
 		// Pre-flight: surface AlreadyImported conflicts so the consumer can
 		// opt-in to a force re-import. With Force=true the engine skips the
-		// check and proceeds straight to fonts.Import (silent overwrite).
+		// check and proceeds straight to fonts.Import.
+		skipped := map[string]bool{}
 		if !opts.Force && len(names) > 0 {
 			manifest, mErr := state.Load(e.deps.StatePath)
 			if mErr == nil {
+			nameLoop:
 				for _, name := range names {
 					entry, ok := manifest.Installed[name]
-					if ok && entry.IsImported() {
-						choice := em.emitAndWait(ConflictEvent{
-							OpID:    opID,
-							Target:  name,
-							Kind:    ConflictAlreadyImported,
-							Choices: []ConflictChoice{ChoiceSkip, ChoiceForce},
-							Token:   e.nextToken(),
-						})
-						switch choice {
-						case ChoiceSkip, ChoiceCancel:
-							em.Send(CanceledEvent{OpID: opID, Target: name})
-							return
-						case ChoiceForce:
-							opts.Force = true
-						}
-						// Only one conflict prompt per import call; rest of the batch
-						// continues under the resolved opts.
-						break
+					if !ok || !entry.IsImported() {
+						continue
+					}
+					choice := em.emitAndWait(ConflictEvent{
+						OpID:    opID,
+						Target:  name,
+						Kind:    ConflictAlreadyImported,
+						Choices: []ConflictChoice{ChoiceSkip, ChoiceForce},
+						Token:   e.nextToken(),
+					})
+					switch choice {
+					case ChoiceSkip, ChoiceCancel:
+						em.Send(CanceledEvent{OpID: opID, Target: name})
+						skipped[name] = true
+					case ChoiceForce:
+						// Force applies to the whole batch; break out of the loop.
+						opts.Force = true
+						break nameLoop
 					}
 				}
 			}
+		}
+
+		// Build the filtered names list. Empty slice + len(skipped)>0 means
+		// every requested name was skipped — short-circuit without invoking
+		// fonts.Import (it would try to scan FontDir for orphans otherwise).
+		if len(skipped) > 0 {
+			filtered := make([]string, 0, len(names))
+			for _, n := range names {
+				if !skipped[n] {
+					filtered = append(filtered, n)
+				}
+			}
+			if len(filtered) == 0 {
+				return
+			}
+			names = filtered
 		}
 
 		params := fonts.ImportParams{
