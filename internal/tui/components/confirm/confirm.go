@@ -1,4 +1,4 @@
-// Package confirm shows a yes/no/cancel/force modale and emits ConfirmResultMsg.
+// Package confirm shows a yes/no/cancel/force modal and emits ConfirmResultMsg.
 package confirm
 
 import (
@@ -11,14 +11,14 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
-// Model is a centered modale that asks a yes/no question (optionally with a
+// Model is a centered modal that asks a yes/no question (optionally with a
 // "force" third choice for destructive ops).
 type Model struct {
 	// Keys is the bound KeyMap (ConfirmYes/No/Cancel/Force live there).
 	Keys keys.KeyMap
 	// Token correlates the result with the originating Request.
 	Token int64
-	// Title is the bold first line of the modale.
+	// Title is the bold first line of the modal.
 	Title string
 	// Body is the explanatory text shown under the title.
 	Body string
@@ -32,12 +32,12 @@ type Model struct {
 	Height int
 }
 
-// New constructs a confirm modale for the given token + title + body.
+// New constructs a confirm modal for the given token + title + body.
 func New(k keys.KeyMap, token int64, title, body string) Model {
 	return Model{Keys: k, Token: token, Title: title, Body: body}
 }
 
-// Init is a no-op (the modale is purely reactive to keypresses).
+// Init is a no-op (the modal is purely reactive to keypresses).
 func (m Model) Init() tea.Cmd { return nil }
 
 // Update consumes the user's key press and emits a ConfirmResultMsg.
@@ -59,7 +59,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the centered modale.
+// View renders the centered modal.
 func (m Model) View() tea.View {
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi)
 	dim := lipgloss.NewStyle().Foreground(theme.TextDim)
