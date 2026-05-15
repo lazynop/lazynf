@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/lazynop/lazynf/internal/state"
 	"github.com/stretchr/testify/assert"
@@ -74,4 +75,51 @@ func TestDetectConflict_DirExistsNotManaged_Force_Reinstall(t *testing.T) {
 	action, err := DetectConflict(m, "JetBrainsMono", dir, "v3.4.0", true)
 	require.NoError(t, err)
 	assert.Equal(t, ActionReinstall, action)
+}
+
+func TestDetectConflict_Imported_NoForce_ReturnsConflictImported(t *testing.T) {
+	dir := t.TempDir() // dir exists on disk
+	m := &state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion,
+		Installed: map[string]state.InstalledFont{
+			"FiraCode": {
+				Release:     state.ReleaseImported,
+				InstalledAt: time.Now(),
+				Dir:         dir,
+				Files:       []string{"a.ttf"},
+			},
+		},
+	}
+	action, err := DetectConflict(m, "FiraCode", dir, "v3.2.1", false)
+	require.Equal(t, ActionConflictImported, action)
+	require.True(t, errors.Is(err, ErrAlreadyInstalled))
+}
+
+func TestDetectConflict_Imported_Force_ReturnsReinstall(t *testing.T) {
+	dir := t.TempDir()
+	m := &state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion,
+		Installed: map[string]state.InstalledFont{
+			"FiraCode": {
+				Release:     state.ReleaseImported,
+				InstalledAt: time.Now(),
+				Dir:         dir,
+				Files:       []string{"a.ttf"},
+			},
+		},
+	}
+	action, err := DetectConflict(m, "FiraCode", dir, "v3.2.1", true)
+	require.Equal(t, ActionReinstall, action)
+	require.NoError(t, err)
+}
+
+func TestDetectConflict_FilesOnDisk_NoForce_ReturnsAbort(t *testing.T) {
+	dir := t.TempDir() // exists but not in manifest
+	m := &state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion,
+		Installed:     map[string]state.InstalledFont{},
+	}
+	action, err := DetectConflict(m, "Hack", dir, "v3.2.1", false)
+	require.Equal(t, ActionAbort, action)
+	require.True(t, errors.Is(err, ErrConflict))
 }
