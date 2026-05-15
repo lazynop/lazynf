@@ -38,11 +38,14 @@ type KeyMap struct {
 	ConfirmNo     key.Binding
 	ConfirmForce  key.Binding
 	ConfirmCancel key.Binding
+
+	shortHelp []key.Binding
+	fullHelp  [][]key.Binding
 }
 
 // Default returns the canonical bindings; future custom-config can override.
 func Default() KeyMap {
-	return KeyMap{
+	k := KeyMap{
 		Quit:      key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 		Help:      key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		FocusNext: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next pane")),
@@ -71,20 +74,21 @@ func Default() KeyMap {
 		ConfirmForce:  key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "force")),
 		ConfirmCancel: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
 	}
-}
-
-// ShortHelp returns the minimal hints to show in the statusbar by default.
-func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Filter, k.Install, k.Remove, k.Help, k.Quit}
-}
-
-// FullHelp returns the full grid for the help overlay (rows of related binds).
-func (k KeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
+	k.shortHelp = []key.Binding{k.Up, k.Down, k.Filter, k.Install, k.Remove, k.Help, k.Quit}
+	k.fullHelp = [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Filter, k.ClearFilter, k.SortCycle, k.Select},
 		{k.Install, k.Update, k.Remove, k.Purge, k.Import},
 		{k.Doctor, k.Refresh, k.ToggleLog},
 		{k.FocusNext, k.FocusPrev, k.Help, k.Quit},
 	}
+	return k
 }
+
+// ShortHelp returns the cached short-help binding list. The same backing
+// array is returned across calls — no per-call allocation.
+func (k KeyMap) ShortHelp() []key.Binding { return k.shortHelp }
+
+// FullHelp returns the cached full-help binding grid. The same backing
+// arrays are returned across calls.
+func (k KeyMap) FullHelp() [][]key.Binding { return k.fullHelp }

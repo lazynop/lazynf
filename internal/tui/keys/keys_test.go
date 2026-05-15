@@ -37,3 +37,21 @@ func TestFullHelp_GroupsRows(t *testing.T) {
 	rows := Default().FullHelp()
 	require.GreaterOrEqual(t, len(rows), 4)
 }
+
+func TestShortHelp_SameSliceAcrossCalls(t *testing.T) {
+	k := Default()
+	a := k.ShortHelp()
+	b := k.ShortHelp()
+	require.NotEmpty(t, a)
+	// Same backing array: proves no per-call allocation.
+	require.Equal(t, &a[0], &b[0], "ShortHelp must return the cached slice")
+}
+
+func TestFullHelp_SameSliceAcrossCalls(t *testing.T) {
+	k := Default()
+	a := k.FullHelp()
+	b := k.FullHelp()
+	require.NotEmpty(t, a)
+	require.NotEmpty(t, a[0])
+	require.Equal(t, &a[0][0], &b[0][0])
+}
