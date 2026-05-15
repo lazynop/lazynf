@@ -116,6 +116,242 @@ func TestRender_ContainsAllNames(t *testing.T) {
 	}
 }
 
+func TestInit_ReturnsNil(t *testing.T) {
+	require.Nil(t, New(keys.Default()).Init())
+}
+
+func TestUp_AtTop_DoesNotMove(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m, _ = applyMsg(m, keyPress("k"))
+	require.Equal(t, 0, m.cursor)
+}
+
+func TestUp_AfterDown_DecrementsCursor(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.cursor = 2
+	m, _ = applyMsg(m, keyPress("k"))
+	require.Equal(t, 1, m.cursor)
+}
+
+func TestDown_AtBottom_DoesNotMove(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.cursor = 3
+	m, _ = applyMsg(m, keyPress("j"))
+	require.Equal(t, 3, m.cursor)
+}
+
+func TestTop_MovesCursorToZero(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.cursor = 3
+	m, _ = applyMsg(m, keyPress("g"))
+	require.Equal(t, 0, m.cursor)
+}
+
+func TestBottom_MovesCursorToLast(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: 'G', Text: "G"})
+	require.Equal(t, 3, m.cursor)
+}
+
+func TestBottom_EmptyList_StaysAtZero(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: 'G', Text: "G"})
+	require.Equal(t, 0, m.cursor)
+}
+
+func TestFilter_EntersFilterEditing(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m, _ = applyMsg(m, keyPress("/"))
+	require.True(t, m.FilterEditing)
+}
+
+func TestSortCycle_WrapsAround(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.sort = SortBySize
+	m, _ = applyMsg(m, keyPress("s"))
+	require.Equal(t, SortByName, m.sort)
+}
+
+func TestVisible_SortByStatus_Orders(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.sort = SortByStatus
+	v := m.Visible()
+	require.Equal(t, engine.StatusAvailable, v[0].Status)
+}
+
+func TestVisible_SortBySize_Orders(t *testing.T) {
+	fonts := []engine.FontInfo{
+		{Name: "Small", Size: 100},
+		{Name: "Big", Size: 1000},
+	}
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: fonts})
+	m.sort = SortBySize
+	v := m.Visible()
+	require.Equal(t, "Big", v[0].Name)
+}
+
+func TestClearSelect_ClearsSelectionMap(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.selected["FiraCode"] = true
+	m, cmd := applyMsg(m, tea.KeyPressMsg{Code: tea.KeyEscape})
+	require.Empty(t, m.selected)
+	require.Equal(t, 0, cmd().(messages.SelectionChangedMsg).Count)
+}
+
+func TestUpdateKey_EmitsRequestUpdate(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.cursor = 0
+	_, cmd := applyMsg(m, keyPress("u"))
+	require.NotNil(t, cmd)
+	got := cmd().(messages.RequestUpdateMsg)
+	require.Equal(t, []string{"FiraCode"}, got.Tags)
+}
+
+func TestRemoveKey_EmitsRequestRemove(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	_, cmd := applyMsg(m, keyPress("r"))
+	require.NotNil(t, cmd)
+	got := cmd().(messages.RequestRemoveMsg)
+	require.False(t, got.Purge)
+}
+
+func TestPurgeKey_EmitsRequestRemoveWithPurge(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	_, cmd := applyMsg(m, tea.KeyPressMsg{Code: 'P', Text: "P"})
+	require.NotNil(t, cmd)
+	got := cmd().(messages.RequestRemoveMsg)
+	require.True(t, got.Purge)
+}
+
+func TestImportKey_EmitsRequestImport(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	_, cmd := applyMsg(m, tea.KeyPressMsg{Code: 'I', Text: "I"})
+	require.NotNil(t, cmd)
+	got := cmd().(messages.RequestImportMsg)
+	require.True(t, got.Detect)
+}
+
+func TestHandleKey_UnboundKey_NoCmd(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	_, cmd := applyMsg(m, keyPress("z"))
+	require.Nil(t, cmd)
+}
+
+func TestFilterMode_BackspaceShrinksFilter(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m.filter = "fira"
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	require.Equal(t, "fir", m.filter)
+}
+
+func TestFilterMode_BackspaceEmpty_NoChange(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: tea.KeyBackspace})
+	require.Equal(t, "", m.filter)
+}
+
+func TestFilterMode_PrintableAppends(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: 'f', Text: "f"})
+	require.Equal(t, "f", m.filter)
+}
+
+func TestFilterMode_NonPrintableIgnored(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: 'é'})
+	require.Equal(t, "", m.filter)
+}
+
+func TestFilterMode_EnterExitsFilter(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: tea.KeyEnter})
+	require.False(t, m.FilterEditing)
+}
+
+func TestFilterMode_EscapeClearsFilterAndExits(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m.filter = "fira"
+	m, _ = applyMsg(m, tea.KeyPressMsg{Code: tea.KeyEscape})
+	require.False(t, m.FilterEditing)
+	require.Equal(t, "", m.filter)
+}
+
+func TestFontStateChanged_MissingFont_NoChange(t *testing.T) {
+	m := New(keys.Default())
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m, _ = applyMsg(m, messages.FontStateChangedMsg{
+		Font: engine.FontInfo{Name: "DoesNotExist", Status: engine.StatusInstalled},
+	})
+	require.Len(t, m.fonts, 4)
+}
+
+func TestView_FilterEditingShowsBuffer(t *testing.T) {
+	m := New(keys.Default())
+	m.Width, m.Height = 40, 12
+	m, _ = applyMsg(m, messages.FontsLoadedMsg{Fonts: makeFonts()})
+	m.FilterEditing = true
+	m.filter = "fi"
+	s := stripANSI(m.View().Content)
+	require.Contains(t, s, "/fi")
+}
+
+func TestWindowed_ViewportZero_ReturnsAll(t *testing.T) {
+	s, e := windowed(0, 0, 5)
+	require.Equal(t, 0, s)
+	require.Equal(t, 5, e)
+}
+
+func TestWindowed_ViewportNegative_ReturnsAll(t *testing.T) {
+	s, e := windowed(0, -1, 5)
+	require.Equal(t, 0, s)
+	require.Equal(t, 5, e)
+}
+
+func TestWindowed_ViewportLargerThanTotal_ReturnsAll(t *testing.T) {
+	s, e := windowed(0, 10, 5)
+	require.Equal(t, 0, s)
+	require.Equal(t, 5, e)
+}
+
+func TestWindowed_CursorWithinFirstWindow(t *testing.T) {
+	s, e := windowed(2, 5, 20)
+	require.Equal(t, 0, s)
+	require.Equal(t, 5, e)
+}
+
+func TestWindowed_CursorScrollsWindow(t *testing.T) {
+	s, e := windowed(7, 3, 20)
+	require.Equal(t, 5, s)
+	require.Equal(t, 8, e)
+}
+
 func applyMsg(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	out, cmd := m.Update(msg)
 	return out.(Model), cmd
