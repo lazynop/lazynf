@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/lazynop/lazynf/internal/cache"
 	"github.com/lazynop/lazynf/internal/fontcache"
 	"github.com/lazynop/lazynf/internal/github"
+	"github.com/lazynop/lazynf/internal/state"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,4 +111,71 @@ func TestInstall_NotInCatalog_EmitsFailedForTag(t *testing.T) {
 		}
 	}
 	require.True(t, hasTagFail, "expected FailedEvent.Target=NopeFont; got %#v", failed)
+}
+
+func TestInstall_AlreadyImported_NoForce_EmitsConflictEvent(t *testing.T) {
+	dir := t.TempDir()
+	srv := newMockGitHubWithRelease(t, "v3.2.1", []string{"FiraCode"}, nil)
+	t.Cleanup(srv.Close)
+	gh := github.NewClient()
+	gh.BaseURL = srv.URL
+
+	// Seed manifest with FiraCode as "imported".
+	statePath := filepath.Join(dir, "state.json")
+	fontDirRoot := filepath.Join(dir, "fonts")
+	require.NoError(t, os.MkdirAll(filepath.Join(fontDirRoot, "FiraCode"), 0o755))
+	require.NoError(t, (&state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion,
+		Installed: map[string]state.InstalledFont{
+			"FiraCode": {
+				Release:     state.ReleaseImported,
+				InstalledAt: time.Now(),
+				Dir:         filepath.Join(fontDirRoot, "FiraCode"),
+				Files:       []string{"FiraCode-Regular.ttf"},
+			},
+		},
+	}).Save(statePath))
+
+	catPath := filepath.Join(dir, "catalog.json")
+	require.NoError(t, (&cache.Catalog{
+		Release:   "v3.2.1",
+		Fonts:     []string{"FiraCode"},
+		CheckedAt: time.Now(),
+	}).Save(catPath))
+
+	e := New(Deps{
+		FontDir:     fontDirRoot,
+		StatePath:   statePath,
+		CatalogPath: catPath,
+		GitHub:      gh,
+		FontCache:   &fontcache.FakeRefresher{},
+	})
+
+	handle := e.Install(context.Background(), "FiraCode", InstallOptions{Force: false})
+
+	var conflict *ConflictEvent
+	var canceled bool
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ev := range handle.Events {
+			switch c := ev.(type) {
+			case ConflictEvent:
+				conflict = &c
+				handle.Resolve(c.Token, ChoiceSkip)
+			case CanceledEvent:
+				canceled = true
+			}
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timeout waiting for handle.Events to close")
+	}
+
+	require.NotNil(t, conflict, "expected ConflictEvent")
+	require.Equal(t, ConflictAlreadyImported, conflict.Kind)
+	require.True(t, canceled, "expected CanceledEvent after ChoiceSkip")
 }

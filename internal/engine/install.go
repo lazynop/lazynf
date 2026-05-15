@@ -3,8 +3,10 @@ package engine
 import (
 	"context"
 	"errors"
+	"path/filepath"
 
 	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
 // InstallOptions captures user-tunable flags for a single Install call.
@@ -42,6 +44,73 @@ func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) O
 		fontDir := opts.Dest
 		if fontDir == "" {
 			fontDir = e.deps.FontDir
+		}
+
+		// Pre-flight conflict detection. Only relevant when !Force; with Force the
+		// engine proceeds straight to the existing overwrite-silent path.
+		if !opts.Force {
+			manifest, mErr := state.Load(e.deps.StatePath)
+			if mErr == nil {
+				installDir := filepath.Join(fontDir, tag)
+				// currentRelease is left empty: we don't have a catalog handle here,
+				// and DetectConflict only uses currentRelease for the "already at
+				// same release" branch which is unreachable when force=false anyway.
+				action, _ := fonts.DetectConflict(manifest, tag, installDir, "", false)
+				switch action {
+				case fonts.ActionConflictImported:
+					choice := em.emitAndWait(ConflictEvent{
+						OpID:    opID,
+						Target:  tag,
+						Kind:    ConflictAlreadyImported,
+						Choices: []ConflictChoice{ChoiceSkip, ChoiceForce},
+						Token:   e.nextToken(),
+					})
+					switch choice {
+					case ChoiceSkip, ChoiceCancel:
+						em.Send(CanceledEvent{OpID: opID, Target: tag})
+						return
+					case ChoiceForce:
+						opts.Force = true
+					}
+				case fonts.ActionAbort:
+					choice := em.emitAndWait(ConflictEvent{
+						OpID:    opID,
+						Target:  tag,
+						Kind:    ConflictFilesOnDisk,
+						Choices: []ConflictChoice{ChoiceSkip, ChoiceForce, ChoiceImportAs},
+						Token:   e.nextToken(),
+					})
+					switch choice {
+					case ChoiceSkip, ChoiceCancel:
+						em.Send(CanceledEvent{OpID: opID, Target: tag})
+						return
+					case ChoiceForce:
+						opts.Force = true
+					case ChoiceImportAs:
+						// Adopt: register existing files in the manifest via fonts.Import.
+						// This skips download / extract entirely.
+						_, ierr := fonts.Import(ctx, fonts.ImportParams{
+							Names:        []string{tag},
+							FontDir:      fontDir,
+							StatePath:    e.deps.StatePath,
+							CatalogPath:  e.deps.CatalogPath,
+							AssetURLBase: e.deps.AssetURLBase,
+							GitHub:       e.deps.GitHub,
+						}, fonts.ImportOptions{})
+						if ierr != nil {
+							em.Send(FailedEvent{OpID: opID, Target: tag, Err: ierr})
+							return
+						}
+						em.Send(CompletedEvent{
+							OpID:   opID,
+							Target: tag,
+							Kind:   CompletedSuccess,
+							Detail: "adopted existing files",
+						})
+						return
+					}
+				}
+			}
 		}
 
 		params := fonts.InstallParams{
