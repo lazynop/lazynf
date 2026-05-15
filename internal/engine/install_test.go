@@ -179,3 +179,73 @@ func TestInstall_AlreadyImported_NoForce_EmitsConflictEvent(t *testing.T) {
 	require.Equal(t, ConflictAlreadyImported, conflict.Kind)
 	require.True(t, canceled, "expected CanceledEvent after ChoiceSkip")
 }
+
+func TestInstall_FilesOnDisk_Adopt_RunsImportAndEmitsCompleted(t *testing.T) {
+	dir := t.TempDir()
+	srv := newMockGitHubWithRelease(t, "v3.2.1", []string{"FiraCode"}, nil)
+	t.Cleanup(srv.Close)
+	gh := github.NewClient()
+	gh.BaseURL = srv.URL
+
+	// Seed a FiraCode dir on disk WITHOUT a manifest entry (FilesOnDisk).
+	fontDirRoot := filepath.Join(dir, "fonts")
+	fontPath := filepath.Join(fontDirRoot, "FiraCode")
+	require.NoError(t, os.MkdirAll(fontPath, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(fontPath, "FiraCode-Regular.ttf"), []byte("FAKE"), 0o644))
+
+	statePath := filepath.Join(dir, "state.json")
+	catPath := filepath.Join(dir, "catalog.json")
+	require.NoError(t, (&cache.Catalog{
+		Release:   "v3.2.1",
+		Fonts:     []string{"FiraCode"},
+		CheckedAt: time.Now(),
+	}).Save(catPath))
+
+	e := New(Deps{
+		FontDir:     fontDirRoot,
+		StatePath:   statePath,
+		CatalogPath: catPath,
+		GitHub:      gh,
+		FontCache:   &fontcache.FakeRefresher{},
+	})
+
+	handle := e.Install(context.Background(), "FiraCode", InstallOptions{Force: false})
+
+	var conflict *ConflictEvent
+	var completed *CompletedEvent
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ev := range handle.Events {
+			switch c := ev.(type) {
+			case ConflictEvent:
+				conflict = &c
+				handle.Resolve(c.Token, ChoiceImportAs)
+			case CompletedEvent:
+				cc := c
+				completed = &cc
+			}
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timeout")
+	}
+
+	require.NotNil(t, conflict, "expected FilesOnDisk ConflictEvent")
+	require.Equal(t, ConflictFilesOnDisk, conflict.Kind)
+	require.Contains(t, conflict.Choices, ChoiceImportAs)
+
+	require.NotNil(t, completed, "expected CompletedEvent after Adopt")
+	require.Equal(t, "FiraCode", completed.Target)
+	require.Equal(t, CompletedSuccess, completed.Kind)
+	require.Contains(t, completed.Detail, "adopted")
+
+	// Manifest should now have FiraCode recorded (imported).
+	m, err := state.Load(statePath)
+	require.NoError(t, err)
+	_, ok := m.Installed["FiraCode"]
+	require.True(t, ok, "fonts.Import should have recorded FiraCode in the manifest after Adopt")
+}
