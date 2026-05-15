@@ -29,28 +29,40 @@ var (
 	SelectedBG = lipgloss.Color("#1e293b") // slate-800
 )
 
-// PaneStyle returns the border style for a pane, lit when focused.
+// Pre-rendered symbol strings cached at package init. lipgloss styles are
+// immutable values so the rendered output is safe to share across goroutines.
+var (
+	SymOK   = lipgloss.NewStyle().Foreground(StatusOK).Render("✓")
+	SymWarn = lipgloss.NewStyle().Foreground(StatusWarn).Render("⚠")
+	SymFail = lipgloss.NewStyle().Foreground(StatusFail).Render("✗")
+	SymSkip = lipgloss.NewStyle().Foreground(TextDim).Render("·")
+
+	paneFocusedStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(BorderFocus)
+	paneDimStyle     = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(BorderDim)
+)
+
+// SymbolOK returns the cached green check mark for installed/healthy items.
+func SymbolOK() string { return SymOK }
+
+// SymbolWarn returns the cached amber warning glyph for stale/warn items.
+func SymbolWarn() string { return SymWarn }
+
+// SymbolFail returns the cached red failure glyph for fail/error items.
+func SymbolFail() string { return SymFail }
+
+// SymbolSkip returns the cached dim skip dot for inapplicable/N/A items.
+func SymbolSkip() string { return SymSkip }
+
+// PaneStyle returns a pre-built border style for the given focus state.
+// The caller chains .Width/.Height/.Padding which clones the style
+// (lipgloss v2 Style is a value type) so the cached styles remain
+// unmodified across calls.
 func PaneStyle(focused bool) lipgloss.Style {
-	color := BorderDim
 	if focused {
-		color = BorderFocus
+		return paneFocusedStyle
 	}
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(color)
+	return paneDimStyle
 }
-
-// SymbolOK returns the green check used to mark a successful state.
-func SymbolOK() string { return lipgloss.NewStyle().Foreground(StatusOK).Render("✓") }
-
-// SymbolWarn returns the amber warning glyph.
-func SymbolWarn() string { return lipgloss.NewStyle().Foreground(StatusWarn).Render("⚠") }
-
-// SymbolFail returns the red failure glyph.
-func SymbolFail() string { return lipgloss.NewStyle().Foreground(StatusFail).Render("✗") }
-
-// SymbolSkip returns the dim dot used to mark a skipped/no-op state.
-func SymbolSkip() string { return lipgloss.NewStyle().Foreground(TextDim).Render("·") }
 
 // SelectedRow highlights the cursor row in fontlist.
 func SelectedRow() lipgloss.Style {
