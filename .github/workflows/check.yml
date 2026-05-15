@@ -17,3 +17,11 @@ jobs:
           cache: true
       - uses: extractions/setup-just@v4
       - run: just check
+      - name: coverage gate
+        shell: bash
+        run: |
+          set -e
+          go test -coverprofile=/tmp/cov.out ./internal/engine/... ./internal/tui/components/...
+          total=$(go tool cover -func=/tmp/cov.out | awk '/^total:/ {sub(/%/,"",$3); print $3}')
+          echo "coverage: ${total}%"
+          awk -v t="$total" 'BEGIN { if (t+0 < 80.0) { exit 1 } }'
