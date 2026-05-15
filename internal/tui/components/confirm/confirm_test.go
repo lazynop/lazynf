@@ -48,6 +48,72 @@ func TestForce_IgnoredWhenNotAllowed(t *testing.T) {
 	require.Nil(t, cmd, "f should be ignored when AllowForce is false")
 }
 
+func TestInit_ReturnsNil(t *testing.T) {
+	require.Nil(t, New(keys.Default(), 1, "T", "B").Init())
+}
+
+func TestEnter_EmitsYes(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	_, cmd := m.Update(keyPress(t, "enter"))
+	require.NotNil(t, cmd)
+	require.Equal(t, messages.ChoiceYes, cmd().(messages.ConfirmResultMsg).Choice)
+}
+
+func TestNonKeyMsg_IsNoOp(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	_, cmd := m.Update("not a key")
+	require.Nil(t, cmd)
+}
+
+func TestUnboundKey_NoCmd(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	_, cmd := m.Update(keyPress(t, "z"))
+	require.Nil(t, cmd)
+}
+
+func TestAdopt_EmitsAdoptWhenAllowed(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	m.AllowAdopt = true
+	_, cmd := m.Update(keyPress(t, "a"))
+	require.NotNil(t, cmd)
+	require.Equal(t, messages.ChoiceAdopt, cmd().(messages.ConfirmResultMsg).Choice)
+}
+
+func TestAdopt_IgnoredWhenNotAllowed(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	_, cmd := m.Update(keyPress(t, "a"))
+	require.Nil(t, cmd)
+}
+
+func TestView_ZeroDimensions_UsesDefaults(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	require.NotEmpty(t, m.View().Content)
+}
+
+func TestView_AllowForceOnly_HintShowsForce(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	m.AllowForce = true
+	m.Width, m.Height = 80, 24
+	require.Contains(t, m.View().Content, "force")
+}
+
+func TestView_AllowAdoptOnly_HintShowsAdopt(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	m.AllowAdopt = true
+	m.Width, m.Height = 80, 24
+	require.Contains(t, m.View().Content, "adopt")
+}
+
+func TestView_ForceAndAdopt_HintShowsBoth(t *testing.T) {
+	m := New(keys.Default(), 1, "T", "B")
+	m.AllowForce = true
+	m.AllowAdopt = true
+	m.Width, m.Height = 80, 24
+	s := m.View().Content
+	require.Contains(t, s, "force")
+	require.Contains(t, s, "adopt")
+}
+
 func TestRender_ShowsTitleAndBody(t *testing.T) {
 	m := New(keys.Default(), 1, "TitleXyz", "BodyZyx")
 	m.Width, m.Height = 80, 24
