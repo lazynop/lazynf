@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/lazynop/lazynf/internal/engine"
+	"github.com/lazynop/lazynf/internal/fontcache"
 	gh "github.com/lazynop/lazynf/internal/github"
 	"github.com/lazynop/lazynf/internal/tui/messages"
 )
@@ -103,5 +105,56 @@ func TestIntegration_InstallRequestPipeline(t *testing.T) {
 	mm := out.(*Model)
 	require.NotEmpty(t, mm.inFlight, "an op should be tracked after install request")
 	require.GreaterOrEqual(t, mm.statusbar.InFlight, 1)
+	_ = cmd
+}
+
+// TestIntegration_RemoveConfirmDispatchesEngine guards against a past bug
+// where the Remove confirm flow re-emitted RequestRemoveMsg instead of
+// calling engine.Remove, looping the modal forever.
+func TestIntegration_RemoveConfirmDispatchesEngine(t *testing.T) {
+	// Wire a dead GitHub client so any net call is graceful (Remove is
+	// local-only but state.Load still runs).
+	deadGH := newDeadGitHubClient()
+
+	eng := engine.New(engine.Deps{
+		StatePath: filepath.Join(t.TempDir(), "state.json"),
+		GitHub:    deadGH,
+		FontCache: &fontcache.FakeRefresher{},
+	})
+	m := New(eng)
+	_ = m.Init()
+	out, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+
+	// Boot with one font in the list (we won't try to actually remove it
+	// since the manifest is empty -- engine.Remove will emit a per-tag
+	// FailedEvent, but the test only cares that an op was dispatched).
+	out, _ = out.(*Model).Update(messages.FontsLoadedMsg{
+		Fonts: []engine.FontInfo{
+			{Name: "FiraCode", Status: engine.StatusInstalled, Version: "v3.2.1"},
+		},
+	})
+	m2 := out.(*Model)
+
+	// Press 'r' on the cursor row.
+	out, cmd := m2.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
+	require.NotNil(t, cmd, "press r must produce a Cmd (RequestRemoveMsg)")
+
+	// Pump the cmd through Update so app sees the RequestRemoveMsg.
+	out, _ = out.(*Model).Update(cmd())
+	m3 := out.(*Model)
+	require.Equal(t, OverlayConfirm, m3.overlay, "expected confirm overlay after r")
+
+	// Press 'y' to confirm. This should now dispatch engine.Remove (not
+	// loop back to the modal).
+	out, cmd = m3.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+	require.NotNil(t, cmd, "press y in confirm must produce a Cmd")
+
+	// Pump the ConfirmResultMsg through Update.
+	out, cmd = out.(*Model).Update(cmd())
+	m4 := out.(*Model)
+
+	require.Equal(t, OverlayNone, m4.overlay, "confirm overlay must close on yes")
+	require.NotEmpty(t, m4.inFlight, "engine.Remove should have launched and registered the op")
+	require.GreaterOrEqual(t, m4.statusbar.InFlight, 1)
 	_ = cmd
 }

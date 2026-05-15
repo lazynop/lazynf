@@ -258,8 +258,10 @@ func (m *Model) confirmQuit() (tea.Model, tea.Cmd) {
 // quitMsg is the internal sentinel stashed in pending for a confirmQuit cycle.
 type quitMsg struct{}
 
-// handleConfirmResult closes the overlay and re-dispatches (or drops) the
-// pending request based on the user's choice.
+// handleConfirmResult closes the overlay and dispatches the pending request
+// based on the user's choice. For RequestRemoveMsg we call engine.Remove
+// directly: re-emitting the message would route it back to the case that
+// opened the modal, looping forever.
 func (m *Model) handleConfirmResult(x messages.ConfirmResultMsg) (tea.Model, tea.Cmd) {
 	m.overlay = OverlayNone
 	pending, ok := m.pending[x.Token]
@@ -270,11 +272,16 @@ func (m *Model) handleConfirmResult(x messages.ConfirmResultMsg) (tea.Model, tea
 	if x.Choice != messages.ChoiceYes {
 		return m, nil
 	}
-	if _, isQuit := pending.(quitMsg); isQuit {
+	switch p := pending.(type) {
+	case quitMsg:
 		m.cancel()
 		return m, tea.Quit
+	case messages.RequestRemoveMsg:
+		return m.startBatchOp(m.engine.Remove(m.ctx, p.Tags, engine.RemoveOptions{Purge: p.Purge}))
+	default:
+		// Future: other confirmable requests.
+		return m, sendMsg(pending)
 	}
-	return m, sendMsg(pending)
 }
 
 // routeEngineEvent forwards an engine event to the logpane (always) and to the
