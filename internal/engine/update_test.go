@@ -52,7 +52,7 @@ func TestUpdate_NoInstalled_Completes(t *testing.T) {
 	}
 	require.Empty(t, failed)
 	require.NotEmpty(t, started, "expected at least one StartedEvent")
-	require.Equal(t, "update", started[0].Kind)
+	require.Equal(t, KindUpdate, started[0].Kind)
 }
 
 func TestUpdate_FontNotInstalled_EmitsFailedForTag(t *testing.T) {

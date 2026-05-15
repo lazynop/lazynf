@@ -50,7 +50,7 @@ and you want to pick it up without waiting for the normal cache TTL.`,
 			for ev := range handle.Events {
 				switch e := ev.(type) {
 				case engine.StartedEvent:
-					if e.Kind == "catalog-fetch" {
+					if e.Kind == engine.KindCatalogFetch {
 						v.Info("Refreshing catalog...")
 					}
 				case engine.CompletedEvent:

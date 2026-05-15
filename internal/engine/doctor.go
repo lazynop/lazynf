@@ -22,7 +22,7 @@ func (e *Engine) RunDoctor(ctx context.Context) OpHandle {
 
 	go func() {
 		defer em.Close()
-		em.Send(StartedEvent{OpID: opID, Kind: "doctor"})
+		em.Send(StartedEvent{OpID: opID, Kind: KindDoctor})
 
 		params := doctor.Params{
 			FontDir:     e.deps.FontDir,

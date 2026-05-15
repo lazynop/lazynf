@@ -32,7 +32,7 @@ func (e *Engine) Update(ctx context.Context, tags []string, opts UpdateOptions) 
 
 	go func() {
 		defer em.Close()
-		em.Send(StartedEvent{OpID: opID, Kind: "update"})
+		em.Send(StartedEvent{OpID: opID, Kind: KindUpdate})
 
 		// Tracks per-tag failures already surfaced via OnEvent so the
 		// post-call sweep of result.Failures doesn't double-emit.
@@ -116,7 +116,7 @@ func translateUpdateEvent(opID OpID, fe fonts.Event, send func(Event)) {
 	case fonts.EventExtractDone:
 		send(LogEvent{OpID: opID, Target: fe.Font, Level: LevelInfo, Message: "extracted"})
 	case fonts.EventCacheRefresh:
-		send(StartedEvent{OpID: opID, Kind: "fc-cache"})
+		send(StartedEvent{OpID: opID, Kind: KindFcCache})
 	case fonts.EventInstallSuccess:
 		send(CompletedEvent{OpID: opID, Target: fe.Font, Kind: CompletedSuccess, Detail: "updated"})
 	case fonts.EventInstallSkipped:

@@ -28,7 +28,7 @@ func (e *Engine) Remove(ctx context.Context, tags []string, opts RemoveOptions) 
 
 	go func() {
 		defer em.Close()
-		em.Send(StartedEvent{OpID: opID, Kind: "remove"})
+		em.Send(StartedEvent{OpID: opID, Kind: KindRemove})
 
 		params := fonts.RemoveParams{
 			Names:     tags,
@@ -75,7 +75,7 @@ func (e *Engine) Remove(ctx context.Context, tags []string, opts RemoveOptions) 
 //	EventRemoveDeadopt → CompletedDeadopted ("manifest entry removed; files left on disk")
 //	EventRemoveError   → FailedEvent (and the tag is tracked in emittedFailures
 //	                     so the post-call result.Failures sweep does not double-emit).
-//	EventCacheRefresh  → StartedEvent{Kind:"fc-cache"}
+//	EventCacheRefresh  → StartedEvent{Kind:KindFcCache}
 func translateRemoveEvent(opID OpID, fe fonts.Event, send func(Event), emitted map[string]bool) {
 	switch fe.Kind {
 	case fonts.EventRemoveSuccess:
@@ -86,6 +86,6 @@ func translateRemoveEvent(opID OpID, fe fonts.Event, send func(Event), emitted m
 		emitted[fe.Font] = true
 		send(FailedEvent{OpID: opID, Target: fe.Font, Err: fe.Err})
 	case fonts.EventCacheRefresh:
-		send(StartedEvent{OpID: opID, Kind: "fc-cache"})
+		send(StartedEvent{OpID: opID, Kind: KindFcCache})
 	}
 }

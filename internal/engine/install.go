@@ -37,7 +37,7 @@ func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) O
 
 	go func() {
 		defer em.Close()
-		em.Send(StartedEvent{OpID: opID, Target: tag, Kind: "install"})
+		em.Send(StartedEvent{OpID: opID, Target: tag, Kind: KindInstall})
 
 		fontDir := opts.Dest
 		if fontDir == "" {
@@ -104,7 +104,7 @@ func translateInstallEvent(opID OpID, fe fonts.Event, send func(Event)) {
 	case fonts.EventExtractDone:
 		send(LogEvent{OpID: opID, Target: fe.Font, Level: LevelInfo, Message: "extracted"})
 	case fonts.EventCacheRefresh:
-		send(StartedEvent{OpID: opID, Target: "", Kind: "fc-cache"})
+		send(StartedEvent{OpID: opID, Target: "", Kind: KindFcCache})
 	case fonts.EventInstallSuccess:
 		send(CompletedEvent{OpID: opID, Target: fe.Font, Kind: CompletedSuccess, Detail: "installed"})
 	case fonts.EventInstallSkipped:

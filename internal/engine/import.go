@@ -34,7 +34,7 @@ func (e *Engine) Import(ctx context.Context, names []string, opts ImportOptions)
 
 	go func() {
 		defer em.Close()
-		em.Send(StartedEvent{OpID: opID, Kind: "import"})
+		em.Send(StartedEvent{OpID: opID, Kind: KindImport})
 
 		params := fonts.ImportParams{
 			Names:        names,

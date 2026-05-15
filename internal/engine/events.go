@@ -16,14 +16,36 @@ type Event interface {
 	GetOpID() OpID
 }
 
+// KindOp identifies the operation kind for StartedEvent. Use the typed
+// constants below instead of bare strings so the set is discoverable.
+type KindOp string
+
+const (
+	// KindInstall marks the start of an install op.
+	KindInstall KindOp = "install"
+	// KindUpdate marks the start of an update op.
+	KindUpdate KindOp = "update"
+	// KindRemove marks the start of a remove op.
+	KindRemove KindOp = "remove"
+	// KindImport marks the start of an import op.
+	KindImport KindOp = "import"
+	// KindFcCache marks the start of the fc-cache refresh sub-phase that
+	// follows install/update/remove on Linux.
+	KindFcCache KindOp = "fc-cache"
+	// KindDoctor marks the start of a doctor op.
+	KindDoctor KindOp = "doctor"
+	// KindCatalogFetch marks the start of a catalog-refresh op.
+	KindCatalogFetch KindOp = "catalog-fetch"
+)
+
 // StartedEvent marks the start of a sub-operation. A single op may emit
-// multiple StartedEvents to delimit successive sub-phases (e.g. "install"
-// at op entry, then "fc-cache" after extraction completes). For single-
+// multiple StartedEvents to delimit successive sub-phases (e.g. KindInstall
+// at op entry, then KindFcCache after extraction completes). For single-
 // target ops, OpID and Target coincide with the only element.
 type StartedEvent struct {
 	OpID   OpID
 	Target string // font tag, "" for ops without target (e.g. RunDoctor)
-	Kind   string // "download", "extract", "fc-cache", "doctor-section", "catalog-fetch"
+	Kind   KindOp
 }
 
 func (e StartedEvent) isEngineEvent() {}

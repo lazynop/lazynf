@@ -89,7 +89,7 @@ func newInstallCmd() *cobra.Command {
 						}
 						b.Update(pct, "")
 					case engine.StartedEvent:
-						if e.Kind == "fc-cache" {
+						if e.Kind == engine.KindFcCache {
 							if showProgress {
 								spin = ui.NewSpinner("Refreshing font cache")
 								spin.Start()

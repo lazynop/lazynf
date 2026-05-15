@@ -117,7 +117,7 @@ only de-adopted from the manifest (their on-disk files are left intact). Use
 			for ev := range handle.Events {
 				switch e := ev.(type) {
 				case engine.StartedEvent:
-					if e.Kind == "fc-cache" {
+					if e.Kind == engine.KindFcCache {
 						if showProgress {
 							spin = ui.NewSpinner("Refreshing font cache")
 							spin.Start()

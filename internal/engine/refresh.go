@@ -19,7 +19,7 @@ func (e *Engine) RefreshCatalog(ctx context.Context) OpHandle {
 
 	go func() {
 		defer em.Close()
-		em.Send(StartedEvent{OpID: opID, Kind: "catalog-fetch"})
+		em.Send(StartedEvent{OpID: opID, Kind: KindCatalogFetch})
 
 		// Remove the existing catalog so ResolveCatalog refetches.
 		if err := os.Remove(e.deps.CatalogPath); err != nil && !errors.Is(err, os.ErrNotExist) {

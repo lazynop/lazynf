@@ -39,7 +39,7 @@ func TestRunDoctor_EmitsSectionsAndCompleted(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, started)
-	require.Equal(t, "doctor", started[0].Kind)
+	require.Equal(t, KindDoctor, started[0].Kind)
 	require.NotEmpty(t, sections, "expected at least one DoctorSectionEvent")
 	require.Len(t, completed, 1)
 	require.Empty(t, failed)
