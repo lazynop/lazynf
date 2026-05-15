@@ -33,3 +33,11 @@ vet:
     go vet ./...
 
 check: fmt-check vet test
+
+# coverage produces a coverage profile + HTML report for the packages with an
+# enforced coverage target (internal/engine and internal/tui/components). The
+# total line at the end can be fed into the CI threshold check.
+coverage:
+    go test -coverprofile=coverage.out ./internal/engine/... ./internal/tui/components/...
+    go tool cover -html=coverage.out -o coverage.html
+    @go tool cover -func=coverage.out | tail -1
