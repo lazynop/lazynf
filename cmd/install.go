@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/lazynop/lazynf/internal/engine"
@@ -111,6 +112,12 @@ func newInstallCmd() *cobra.Command {
 							v.Info("%s %s (already installed)", ui.StyleDim.Render("•"), e.Target)
 							skipped = append(skipped, e.Target)
 						}
+					case engine.ConflictEvent:
+						// CLI auto-resolves with Skip: the user can re-run with
+						// --force to override. Register a failure with a clear hint
+						// so the batch continues but the exit code is non-zero.
+						failures[e.Target] = fmt.Errorf("conflict (use --force to override): %s", conflictDesc(e.Kind))
+						handle.Resolve(e.Token, engine.ChoiceSkip)
 					case engine.FailedEvent:
 						if b := bars[e.Target]; b != nil {
 							b.Fail(e.Err.Error())
@@ -158,5 +165,17 @@ func summarizeEngine(v *ui.Verbosity, successes, skipped []string, failures map[
 		for name, err := range failures {
 			v.Errorf("%s %s: %s", ui.StyleFailure.Render("✗"), name, err.Error())
 		}
+	}
+}
+
+// conflictDesc renders an engine.ConflictKind as a short user-facing reason.
+func conflictDesc(kind engine.ConflictKind) string {
+	switch kind {
+	case engine.ConflictAlreadyImported:
+		return "already imported"
+	case engine.ConflictFilesOnDisk:
+		return "files exist outside lazynf"
+	default:
+		return "unknown conflict"
 	}
 }

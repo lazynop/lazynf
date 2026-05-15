@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/lazynop/lazynf/internal/engine"
@@ -84,6 +85,12 @@ func newImportCmd() *cobra.Command {
 						v.Info("%s %s (already in state, use --force to re-import)", ui.StyleDim.Render("•"), e.Target)
 						skipped = append(skipped, e.Target)
 					}
+				case engine.ConflictEvent:
+					// CLI auto-resolves with Skip: the user can re-run with
+					// --force to override. Register a failure with a clear hint
+					// so the batch continues but the exit code is non-zero.
+					failures[e.Target] = fmt.Errorf("conflict (use --force to override): %s", conflictDesc(e.Kind))
+					handle.Resolve(e.Token, engine.ChoiceSkip)
 				case engine.FailedEvent:
 					if e.Target != "" && e.Err != nil {
 						failures[e.Target] = e.Err
