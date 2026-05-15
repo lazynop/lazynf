@@ -8,6 +8,7 @@ import (
 
 	"github.com/lazynop/lazynf/internal/cache"
 	"github.com/lazynop/lazynf/internal/github"
+	"github.com/lazynop/lazynf/internal/state"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,4 +49,49 @@ func TestImport_EmptyNames_NoAll_NoOp(t *testing.T) {
 		}
 	}
 	require.Empty(t, failed, "no-op import should not fail")
+}
+
+func TestImport_AlreadyImported_NoForce_EmitsConflictEvent(t *testing.T) {
+	dir := t.TempDir()
+	statePath := filepath.Join(dir, "state.json")
+	require.NoError(t, (&state.Manifest{
+		SchemaVersion: state.CurrentSchemaVersion,
+		Installed: map[string]state.InstalledFont{
+			"FiraCode": {Release: state.ReleaseImported, InstalledAt: time.Now()},
+		},
+	}).Save(statePath))
+
+	e := New(Deps{
+		FontDir:     filepath.Join(dir, "fonts"),
+		StatePath:   statePath,
+		CatalogPath: filepath.Join(dir, "catalog.json"),
+	})
+
+	handle := e.Import(context.Background(), []string{"FiraCode"}, ImportOptions{Force: false})
+
+	var got *ConflictEvent
+	var canceled bool
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ev := range handle.Events {
+			switch c := ev.(type) {
+			case ConflictEvent:
+				got = &c
+				handle.Resolve(c.Token, ChoiceSkip)
+			case CanceledEvent:
+				canceled = true
+			}
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timeout")
+	}
+
+	require.NotNil(t, got, "expected ConflictEvent")
+	require.Equal(t, ConflictAlreadyImported, got.Kind)
+	require.True(t, canceled)
 }

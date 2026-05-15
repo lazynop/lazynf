@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/lazynop/lazynf/internal/fonts"
+	"github.com/lazynop/lazynf/internal/state"
 )
 
 // ImportOptions captures user-tunable flags for an Import call.
@@ -35,6 +36,37 @@ func (e *Engine) Import(ctx context.Context, names []string, opts ImportOptions)
 	go func() {
 		defer em.Close()
 		em.Send(StartedEvent{OpID: opID, Kind: KindImport})
+
+		// Pre-flight: surface AlreadyImported conflicts so the consumer can
+		// opt-in to a force re-import. With Force=true the engine skips the
+		// check and proceeds straight to fonts.Import (silent overwrite).
+		if !opts.Force && len(names) > 0 {
+			manifest, mErr := state.Load(e.deps.StatePath)
+			if mErr == nil {
+				for _, name := range names {
+					entry, ok := manifest.Installed[name]
+					if ok && entry.IsImported() {
+						choice := em.emitAndWait(ConflictEvent{
+							OpID:    opID,
+							Target:  name,
+							Kind:    ConflictAlreadyImported,
+							Choices: []ConflictChoice{ChoiceSkip, ChoiceForce},
+							Token:   e.nextToken(),
+						})
+						switch choice {
+						case ChoiceSkip, ChoiceCancel:
+							em.Send(CanceledEvent{OpID: opID, Target: name})
+							return
+						case ChoiceForce:
+							opts.Force = true
+						}
+						// Only one conflict prompt per import call; rest of the batch
+						// continues under the resolved opts.
+						break
+					}
+				}
+			}
+		}
 
 		params := fonts.ImportParams{
 			Names:        names,
