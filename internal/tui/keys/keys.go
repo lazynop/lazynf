@@ -57,7 +57,7 @@ func Default() KeyMap {
 		Filter:      key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
 		ClearFilter: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "clear filter")),
 		SortCycle:   key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "sort")),
-		Select:      key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "select")),
+		Select:      key.NewBinding(key.WithKeys("space"), key.WithHelp("space", "select")),
 		ClearSelect: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "clear selection")),
 		Install:     key.NewBinding(key.WithKeys("i"), key.WithHelp("i", "install")),
 		Update:      key.NewBinding(key.WithKeys("u"), key.WithHelp("u", "update")),
