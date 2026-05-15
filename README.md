@@ -2,7 +2,15 @@
 
 Install [Nerd Fonts](https://www.nerdfonts.com/font-downloads) from your terminal.
 
-> **Status:** early development. MVP supports `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `doctor`, and shell `completion` on Linux and macOS. No release tagged yet — build from source.
+> **Status:** early development. Interactive TUI plus full CLI: `install`, `import`, `update`, `remove`, `list`, `search`, `cache clean`, `cache refresh`, `doctor`, and shell `completion` on Linux and macOS. No release tagged yet — build from source.
+
+## Interactive mode
+
+Run `lazynf` with no arguments on a real terminal to open the interactive TUI: browse the full Nerd Fonts catalog, mark fonts with `space`, install / update / remove with `i` / `u` / `r`, and watch progress streamed in the log pane below. Doctor diagnostics with actionable fixes are available via `d`. Press `?` inside the TUI for the full key map.
+
+<!-- TODO: add asciinema or screenshot link from manual smoke (P2.T13) -->
+
+CLI sub-commands (`lazynf install foo`, `lazynf doctor`, etc.) remain available and behave exactly as before. The TUI is only launched when stdout is a TTY; piping or redirecting falls back to the help output.
 
 ## Install
 
