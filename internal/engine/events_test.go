@@ -30,6 +30,19 @@ func TestEngine_NextOpID_Monotone(t *testing.T) {
 	require.Greater(t, b, a)
 }
 
+func TestEventInterface_MarkerMethods_AllVariants(t *testing.T) {
+	// isEngineEvent is an unexported marker; calling it explicitly via the
+	// concrete value lifts coverage for the otherwise-uncalled method.
+	StartedEvent{}.isEngineEvent()
+	ProgressEvent{}.isEngineEvent()
+	LogEvent{}.isEngineEvent()
+	CompletedEvent{}.isEngineEvent()
+	FailedEvent{}.isEngineEvent()
+	CanceledEvent{}.isEngineEvent()
+	ConflictEvent{}.isEngineEvent()
+	DoctorSectionEvent{}.isEngineEvent()
+}
+
 func TestEngine_NextToken_Monotone(t *testing.T) {
 	e := New(Deps{})
 	a := e.nextToken()
