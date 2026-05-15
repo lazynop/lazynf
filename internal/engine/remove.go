@@ -66,7 +66,10 @@ func (e *Engine) Remove(ctx context.Context, tags []string, opts RemoveOptions) 
 		}
 	}()
 
-	return OpHandle{Events: em.Events(), Resolve: noopResolve}
+	return OpHandle{
+		Events:  em.Events(),
+		Resolve: func(token int64, choice ConflictChoice) { em.pending.resolve(token, choice) },
+	}
 }
 
 // translateRemoveEvent maps fonts.Event to engine.Event for Remove semantics.

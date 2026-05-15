@@ -88,7 +88,7 @@ func (e *Engine) Install(ctx context.Context, tag string, opts InstallOptions) O
 
 	return OpHandle{
 		Events:  em.Events(),
-		Resolve: noopResolve,
+		Resolve: func(token int64, choice ConflictChoice) { em.pending.resolve(token, choice) },
 	}
 }
 

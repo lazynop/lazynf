@@ -99,7 +99,7 @@ func (e *Engine) Update(ctx context.Context, tags []string, opts UpdateOptions) 
 
 	return OpHandle{
 		Events:  em.Events(),
-		Resolve: noopResolve,
+		Resolve: func(token int64, choice ConflictChoice) { em.pending.resolve(token, choice) },
 	}
 }
 

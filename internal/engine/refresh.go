@@ -42,5 +42,8 @@ func (e *Engine) RefreshCatalog(ctx context.Context) OpHandle {
 		em.Send(CompletedEvent{OpID: opID, Kind: CompletedSuccess, Detail: "catalog refreshed"})
 	}()
 
-	return OpHandle{Events: em.Events(), Resolve: noopResolve}
+	return OpHandle{
+		Events:  em.Events(),
+		Resolve: func(token int64, choice ConflictChoice) { em.pending.resolve(token, choice) },
+	}
 }

@@ -83,7 +83,10 @@ func (e *Engine) Import(ctx context.Context, names []string, opts ImportOptions)
 		}
 	}()
 
-	return OpHandle{Events: em.Events(), Resolve: noopResolve}
+	return OpHandle{
+		Events:  em.Events(),
+		Resolve: func(token int64, choice ConflictChoice) { em.pending.resolve(token, choice) },
+	}
 }
 
 // translateImportEvent maps fonts.Event to engine.Event for Import semantics.
