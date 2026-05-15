@@ -21,17 +21,11 @@ func Compute(w, h int, showLog bool) Layout {
 	statusH := 1
 	logH := 0
 	if showLog {
-		logH = minInt(8, h/3)
+		logH = min(8, h/3)
 	}
-	bodyH := h - statusH - logH
-	if bodyH < 1 {
-		bodyH = 1
-	}
+	bodyH := max(1, h-statusH-logH)
 	if w >= 80 {
-		listW := w * 38 / 100
-		if listW < 20 {
-			listW = 20
-		}
+		listW := max(20, w*38/100)
 		return Layout{
 			ListW:   listW,
 			ListH:   bodyH,
@@ -53,12 +47,4 @@ func Compute(w, h int, showLog bool) Layout {
 		StatusW:  w,
 		Vertical: true,
 	}
-}
-
-// minInt returns the smaller of a and b.
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

@@ -31,9 +31,6 @@ type Model struct {
 	// SelectionCount is the number of multi-selected items to surface as
 	// a badge on the right. Zero hides the badge.
 	SelectionCount int
-	// FilterActive indicates whether a filter is currently applied; reserved
-	// for future use (e.g. an extra hint) and currently unused by View.
-	FilterActive bool
 }
 
 // New constructs a statusbar with the given KeyMap and zeroed counters.

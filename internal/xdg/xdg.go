@@ -34,6 +34,17 @@ func CacheHome() string {
 	return filepath.Join(os.TempDir(), appName, "cache")
 }
 
+// StateHome returns the XDG state home directory.
+func StateHome() string {
+	if v := os.Getenv("XDG_STATE_HOME"); v != "" {
+		return v
+	}
+	if h := os.Getenv("HOME"); h != "" {
+		return filepath.Join(h, ".local", "state")
+	}
+	return filepath.Join(os.TempDir(), appName, "state")
+}
+
 // lazynfDataDir is $XDG_DATA_HOME/lazynf.
 func lazynfDataDir() string { return filepath.Join(DataHome(), appName) }
 

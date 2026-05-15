@@ -1,7 +1,6 @@
 package fontlist
 
 import (
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -138,6 +137,3 @@ func keyPress(s string) tea.KeyPressMsg {
 func stripANSI(s string) string {
 	return ansi.Strip(s)
 }
-
-// Avoid unused-import error if strings/ansi not consumed elsewhere.
-var _ = strings.Contains

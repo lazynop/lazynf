@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/bubbles/v2/progress"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -21,7 +20,6 @@ const ringSize = 200
 type opState struct {
 	target  string
 	spinner spinner.Model
-	bar     progress.Model
 	pct     float64
 }
 
@@ -107,14 +105,14 @@ func (m Model) handleEngineEvent(msg messages.EngineEventMsg) Model {
 }
 
 // ensureOp returns the existing opState for target, or creates a fresh one
-// with a Dot spinner and a default-blend progress bar.
+// with a Dot spinner. The numeric percentage in pct is what the logpane
+// renders; no separate progress.Model is needed for that.
 func (m *Model) ensureOp(target string) opState {
 	if op, ok := m.ops[target]; ok {
 		return op
 	}
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
-	bar := progress.New(progress.WithDefaultBlend())
-	return opState{target: target, spinner: sp, bar: bar}
+	return opState{target: target, spinner: sp}
 }
 
 // append pushes a single line onto the ring, evicting the oldest entry when

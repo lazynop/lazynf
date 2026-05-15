@@ -37,7 +37,6 @@ type Model struct {
 	sort     SortKey
 	cursor   int
 	selected map[string]bool
-	offset   int
 
 	Width, Height int
 	Focused       bool
@@ -60,7 +59,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.FontsLoadedMsg:
 		m.fonts = x.Fonts
 		m.cursor = 0
-		m.offset = 0
 		return m, m.emitHighlight()
 
 	case messages.FontStateChangedMsg:
@@ -98,7 +96,7 @@ func (m Model) handleKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.cursor = 0
 		return m, m.emitHighlight()
 	case key.Matches(k, m.Keys.Bottom):
-		m.cursor = maxInt(0, len(visible)-1)
+		m.cursor = max(0, len(visible)-1)
 		return m, m.emitHighlight()
 	case key.Matches(k, m.Keys.Filter):
 		m.FilterEditing = true
@@ -114,20 +112,20 @@ func (m Model) handleKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				m.selected[cur.Name] = true
 			}
 		}
-		return m, sendMsg(messages.SelectionChangedMsg{Count: len(m.selected)})
+		return m, messages.Cmd(messages.SelectionChangedMsg{Count: len(m.selected)})
 	case key.Matches(k, m.Keys.ClearSelect):
 		m.selected = map[string]bool{}
-		return m, sendMsg(messages.SelectionChangedMsg{Count: 0})
+		return m, messages.Cmd(messages.SelectionChangedMsg{Count: 0})
 	case key.Matches(k, m.Keys.Install):
-		return m, sendMsg(messages.RequestInstallMsg{Tags: m.targets(visible)})
+		return m, messages.Cmd(messages.RequestInstallMsg{Tags: m.targets(visible)})
 	case key.Matches(k, m.Keys.Update):
-		return m, sendMsg(messages.RequestUpdateMsg{Tags: m.targets(visible)})
+		return m, messages.Cmd(messages.RequestUpdateMsg{Tags: m.targets(visible)})
 	case key.Matches(k, m.Keys.Remove):
-		return m, sendMsg(messages.RequestRemoveMsg{Tags: m.targets(visible), Purge: false})
+		return m, messages.Cmd(messages.RequestRemoveMsg{Tags: m.targets(visible), Purge: false})
 	case key.Matches(k, m.Keys.Purge):
-		return m, sendMsg(messages.RequestRemoveMsg{Tags: m.targets(visible), Purge: true})
+		return m, messages.Cmd(messages.RequestRemoveMsg{Tags: m.targets(visible), Purge: true})
 	case key.Matches(k, m.Keys.Import):
-		return m, sendMsg(messages.RequestImportMsg{Names: m.targets(visible), Detect: true})
+		return m, messages.Cmd(messages.RequestImportMsg{Names: m.targets(visible), Detect: true})
 	}
 	return m, nil
 }
@@ -203,15 +201,22 @@ func (m Model) targets(visible []engine.FontInfo) []string {
 
 func (m Model) emitHighlight() tea.Cmd {
 	cur := m.cursorFont(m.Visible())
-	return sendMsg(messages.FontHighlightedMsg{Font: cur})
+	return messages.Cmd(messages.FontHighlightedMsg{Font: cur})
 }
 
 // View renders the list pane.
 func (m Model) View() tea.View {
 	visible := m.Visible()
-	rows := make([]string, 0, len(visible)+1)
-	for i, f := range visible {
-		rows = append(rows, renderRow(f, m.selected[f.Name], i == m.cursor))
+	// Border + padding eat 2 rows; filter buffer eats 1 more when editing.
+	viewportH := m.Height - 2
+	if m.FilterEditing {
+		viewportH--
+	}
+	start, end := windowed(m.cursor, viewportH, len(visible))
+
+	rows := make([]string, 0, end-start+1)
+	for i := start; i < end; i++ {
+		rows = append(rows, renderRow(visible[i], m.selected[visible[i].Name], i == m.cursor))
 	}
 	if len(rows) == 0 {
 		rows = append(rows, lipgloss.NewStyle().Foreground(theme.TextDim).Render("(no fonts)"))
@@ -227,6 +232,21 @@ func (m Model) View() tea.View {
 		Height(m.Height).
 		Padding(0, 1)
 	return tea.NewView(border.Render(body))
+}
+
+// windowed returns the [start, end) slice indices that keep cursor visible
+// within a viewport of height viewportH out of total items. Falls back to
+// showing everything when the height is unknown or larger than the list.
+func windowed(cursor, viewportH, total int) (int, int) {
+	if viewportH < 1 || viewportH >= total {
+		return 0, total
+	}
+	start := 0
+	if cursor >= viewportH {
+		start = cursor - viewportH + 1
+	}
+	end := min(total, start+viewportH)
+	return start, end
 }
 
 func renderRow(f engine.FontInfo, selected, cursor bool) string {
@@ -248,13 +268,4 @@ func renderRow(f engine.FontInfo, selected, cursor bool) string {
 		return theme.SelectedRow().Render(line)
 	}
 	return line
-}
-
-func sendMsg(m tea.Msg) tea.Cmd { return func() tea.Msg { return m } }
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

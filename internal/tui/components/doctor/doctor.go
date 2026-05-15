@@ -46,6 +46,7 @@ func (m Model) Init() tea.Cmd { return nil }
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch x := msg.(type) {
 	case messages.DoctorSectionMsg:
+		m.running = false
 		m.sections = append(m.sections, Section{
 			Name:   x.Section,
 			Title:  x.Title,
@@ -80,16 +81,16 @@ func (m Model) handleKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		switch m.sections[m.cursor].Action {
 		case engine.ActionRefreshCatalog:
-			return m, send(messages.RequestRefreshCatalogMsg{})
+			return m, messages.Cmd(messages.RequestRefreshCatalogMsg{})
 		case engine.ActionRefreshFontCache:
-			return m, send(messages.RequestDoctorMsg{})
+			return m, messages.Cmd(messages.RequestDoctorMsg{})
 		}
 		return m, nil
 	case k.Code == 'r':
 		m.sections = nil
 		m.cursor = 0
 		m.running = true
-		return m, send(messages.RequestDoctorMsg{})
+		return m, messages.Cmd(messages.RequestDoctorMsg{})
 	}
 	return m, nil
 }
@@ -144,6 +145,3 @@ func glyphFor(s engine.DoctorStatus) string {
 	}
 	return theme.SymbolSkip()
 }
-
-// send wraps a message in a tea.Cmd so it can be returned from Update.
-func send(msg tea.Msg) tea.Cmd { return func() tea.Msg { return msg } }

@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -23,6 +22,7 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/drain"
 	"github.com/lazynop/lazynf/internal/tui/keys"
 	"github.com/lazynop/lazynf/internal/tui/messages"
+	"github.com/lazynop/lazynf/internal/xdg"
 )
 
 // Overlay identifies which modal/overlay is currently on top of the layout.
@@ -77,7 +77,7 @@ func New(eng *engine.Engine) *Model {
 		focused:   messages.PaneFontlist,
 		fontlist:  fontlist.New(k),
 		detail:    detail.New(),
-		logpane:   logpane.New(logpane.NewFileLogger(stateDir())),
+		logpane:   logpane.New(logpane.NewFileLogger(xdg.StateHome())),
 		statusbar: statusbar.New(k),
 		confirm:   confirm.New(k, 0, "", ""),
 		doctor:    doctor.New(k),
@@ -177,16 +177,21 @@ func (m *Model) handleKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if len(m.inFlight) > 0 {
 			return m.confirmQuit()
 		}
+		m.cancel()
 		return m, tea.Quit
 	case key.Matches(k, m.keys.Help):
 		m.overlay = OverlayHelp
 		return m, nil
 	case key.Matches(k, m.keys.Doctor):
-		return m, sendMsg(messages.RequestDoctorMsg{})
+		return m, messages.Cmd(messages.RequestDoctorMsg{})
 	case key.Matches(k, m.keys.Refresh):
-		return m, sendMsg(messages.RequestRefreshCatalogMsg{})
+		return m, messages.Cmd(messages.RequestRefreshCatalogMsg{})
 	case key.Matches(k, m.keys.FocusNext):
 		m.focused = nextPane(m.focused)
+		m.applyLayout()
+		return m, nil
+	case key.Matches(k, m.keys.FocusPrev):
+		m.focused = prevPane(m.focused)
 		m.applyLayout()
 		return m, nil
 	case key.Matches(k, m.keys.ToggleLog):
@@ -280,7 +285,7 @@ func (m *Model) handleConfirmResult(x messages.ConfirmResultMsg) (tea.Model, tea
 		return m.startBatchOp(m.engine.Remove(m.ctx, p.Tags, engine.RemoveOptions{Purge: p.Purge}))
 	default:
 		// Future: other confirmable requests.
-		return m, sendMsg(pending)
+		return m, messages.Cmd(pending)
 	}
 }
 
@@ -356,12 +361,18 @@ func (m *Model) View() tea.View {
 }
 
 // nextPane cycles focus between the fontlist and the detail pane.
+// With only two reachable panes the previous direction maps to the same toggle.
 func nextPane(p messages.Pane) messages.Pane {
 	if p == messages.PaneFontlist {
 		return messages.PaneDetail
 	}
 	return messages.PaneFontlist
 }
+
+// prevPane mirrors nextPane in the reverse direction; with two panes the
+// behavior is identical, but keeping a named symbol clarifies intent at
+// the key-handler call sites.
+func prevPane(p messages.Pane) messages.Pane { return nextPane(p) }
 
 // joinShort renders a comma-separated list of tags, collapsing long lists into
 // "first, second, ... +N" so the confirm modal stays readable.
@@ -370,16 +381,4 @@ func joinShort(tags []string) string {
 		return tags[0] + ", " + tags[1] + ", ... +" + strconv.Itoa(len(tags)-2)
 	}
 	return strings.Join(tags, ", ")
-}
-
-// sendMsg wraps a tea.Msg into a tea.Cmd so it can be returned from Update.
-func sendMsg(msg tea.Msg) tea.Cmd { return func() tea.Msg { return msg } }
-
-// stateDir returns $XDG_STATE_HOME or the conventional ~/.local/state fallback.
-func stateDir() string {
-	if v := os.Getenv("XDG_STATE_HOME"); v != "" {
-		return v
-	}
-	home, _ := os.UserHomeDir()
-	return home + "/.local/state"
 }

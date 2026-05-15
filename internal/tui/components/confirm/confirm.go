@@ -48,13 +48,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	switch {
 	case key.Matches(kmsg, m.Keys.ConfirmYes):
-		return m, send(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceYes})
+		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceYes})
 	case key.Matches(kmsg, m.Keys.ConfirmNo):
-		return m, send(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceNo})
+		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceNo})
 	case m.AllowForce && key.Matches(kmsg, m.Keys.ConfirmForce):
-		return m, send(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceForce})
+		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceForce})
 	case key.Matches(kmsg, m.Keys.ConfirmCancel):
-		return m, send(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceCancel})
+		return m, messages.Cmd(messages.ConfirmResultMsg{Token: m.Token, Choice: messages.ChoiceCancel})
 	}
 	return m, nil
 }
@@ -81,6 +81,3 @@ func (m Model) View() tea.View {
 	}
 	return tea.NewView(lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, box))
 }
-
-// send wraps a tea.Msg into a tea.Cmd.
-func send(msg tea.Msg) tea.Cmd { return func() tea.Msg { return msg } }

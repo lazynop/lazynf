@@ -4,8 +4,14 @@
 package messages
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/lazynop/lazynf/internal/engine"
 )
+
+// Cmd wraps a tea.Msg into a tea.Cmd. Returned from a component's Update so
+// the bubbletea runtime delivers msg back through Update on the next tick.
+func Cmd(msg tea.Msg) tea.Cmd { return func() tea.Msg { return msg } }
 
 // EngineEventMsg wraps an engine.Event so it can flow through bubbletea.
 // The OpID is duplicated from Ev.GetOpID() for convenience.
@@ -101,19 +107,13 @@ const (
 	ChoiceForce
 )
 
-// FocusChangeMsg moves focus to a different pane. Emitted on Tab / numeric
-// keys. The app updates its focused field and the panes update their borders.
-type FocusChangeMsg struct {
-	Pane Pane
-}
-
 // Pane identifies which sub-model currently has keyboard focus.
 type Pane int
 
-// Pane identifiers for keyboard focus tracking.
+// Pane identifiers for keyboard focus tracking. Only Fontlist and Detail
+// participate in the focus cycle today; the others are reserved for when
+// their panes grow keybindings of their own.
 const (
 	PaneFontlist Pane = iota
 	PaneDetail
-	PaneLogpane
-	PaneDoctor
 )
