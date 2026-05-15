@@ -15,6 +15,12 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
+// Package-level styles hoisted out of View to avoid per-frame allocation.
+var (
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi)
+	dim        = lipgloss.NewStyle().Foreground(theme.TextDim)
+)
+
 // Section is one accumulated check result the pane displays.
 type Section struct {
 	Name   string
@@ -97,10 +103,7 @@ func (m Model) handleKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // View renders the pane centered on screen.
 func (m Model) View() tea.View {
-	title := lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi).Render("Doctor")
-	dim := lipgloss.NewStyle().Foreground(theme.TextDim)
-
-	rows := []string{title, ""}
+	rows := []string{titleStyle.Render("Doctor"), ""}
 	for i, s := range m.sections {
 		glyph := glyphFor(s.Status)
 		line := glyph + " " + s.Name

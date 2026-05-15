@@ -11,6 +11,12 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
+// Package-level styles hoisted out of View to avoid per-frame allocation.
+var (
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi)
+	dim        = lipgloss.NewStyle().Foreground(theme.TextDim)
+)
+
 // Model is a centered modal that asks a yes/no question (optionally with a
 // "force" third choice for destructive ops).
 type Model struct {
@@ -61,9 +67,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the centered modal.
 func (m Model) View() tea.View {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi)
-	dim := lipgloss.NewStyle().Foreground(theme.TextDim)
-
 	hints := dim.Render("y/enter: yes  n: no  esc: cancel")
 	if m.AllowForce {
 		hints = dim.Render("y/enter: yes  n: no  f: force  esc: cancel")

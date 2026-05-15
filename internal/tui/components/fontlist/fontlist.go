@@ -16,6 +16,9 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
+// Package-level styles hoisted out of View to avoid per-frame allocation.
+var emptyStyle = lipgloss.NewStyle().Foreground(theme.TextDim)
+
 // SortKey enumerates the sort orderings the user can cycle through.
 type SortKey int
 
@@ -219,7 +222,7 @@ func (m Model) View() tea.View {
 		rows = append(rows, renderRow(visible[i], m.selected[visible[i].Name], i == m.cursor))
 	}
 	if len(rows) == 0 {
-		rows = append(rows, lipgloss.NewStyle().Foreground(theme.TextDim).Render("(no fonts)"))
+		rows = append(rows, emptyStyle.Render("(no fonts)"))
 	}
 
 	body := strings.Join(rows, "\n")

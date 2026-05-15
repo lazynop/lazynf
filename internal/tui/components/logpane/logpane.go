@@ -16,6 +16,9 @@ import (
 
 const ringSize = 200
 
+// Package-level styles hoisted out of the hot path to avoid per-call allocation.
+var timestampStyle = lipgloss.NewStyle().Foreground(theme.TextDim)
+
 // opState tracks per-target progress for the currently-streaming engine ops.
 type opState struct {
 	target  string
@@ -119,7 +122,7 @@ func (m *Model) ensureOp(target string) opState {
 // the buffer is full.
 func (m *Model) append(line string) {
 	stamp := time.Now().Format("15:04:05")
-	full := lipgloss.NewStyle().Foreground(theme.TextDim).Render(stamp+" ") + line
+	full := timestampStyle.Render(stamp+" ") + line
 	m.lines = append(m.lines, full)
 	if len(m.lines) > ringSize {
 		m.lines = m.lines[len(m.lines)-ringSize:]

@@ -13,6 +13,13 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
+// Package-level styles hoisted out of View to avoid per-frame allocation.
+var (
+	dim   = lipgloss.NewStyle().Foreground(theme.TextDim)
+	hi    = lipgloss.NewStyle().Foreground(theme.TextHi).Bold(true)
+	label = lipgloss.NewStyle().Foreground(theme.TextDim).Width(10)
+)
+
 // Model renders the right-hand pane that displays the highlighted font.
 type Model struct {
 	Current       *engine.FontInfo
@@ -37,10 +44,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the pane.
 func (m Model) View() tea.View {
-	dim := lipgloss.NewStyle().Foreground(theme.TextDim)
-	hi := lipgloss.NewStyle().Foreground(theme.TextHi).Bold(true)
-	label := lipgloss.NewStyle().Foreground(theme.TextDim).Width(10)
-
 	var body string
 	if m.Current == nil {
 		body = dim.Render("no font selected")

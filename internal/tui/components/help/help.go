@@ -11,6 +11,13 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
+// Package-level styles hoisted out of View to avoid per-frame allocation.
+var (
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi)
+	keyStyle   = lipgloss.NewStyle().Foreground(theme.StatusInfo)
+	dimStyle   = lipgloss.NewStyle().Foreground(theme.TextDim)
+)
+
 // Model renders the full-screen-centered help overlay.
 type Model struct {
 	// Keys provides the bindings rendered as the cheat-sheet table.
@@ -34,10 +41,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
 
 // View renders the help table centered on the screen.
 func (m Model) View() tea.View {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(theme.TextHi)
-	keyStyle := lipgloss.NewStyle().Foreground(theme.StatusInfo)
-	dimStyle := lipgloss.NewStyle().Foreground(theme.TextDim)
-
 	rows := []string{titleStyle.Render("Key bindings"), ""}
 	for _, row := range m.Keys.FullHelp() {
 		var parts []string

@@ -16,6 +16,12 @@ import (
 	"github.com/lazynop/lazynf/internal/tui/theme"
 )
 
+// Package-level styles hoisted out of View to avoid per-frame allocation.
+var (
+	hintStyle  = lipgloss.NewStyle().Foreground(theme.TextDim)
+	badgeStyle = lipgloss.NewStyle().Foreground(theme.StatusInfo)
+)
+
 // Model is the statusbar's tea.Model. Public fields are written by the app
 // root model before each render; View() produces a single-line bar.
 type Model struct {
@@ -51,9 +57,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the statusbar as a single line of width m.Width with key hints
 // on the left and "N ops" / "N selected" badges right-aligned.
 func (m Model) View() tea.View {
-	hintStyle := lipgloss.NewStyle().Foreground(theme.TextDim)
-	badgeStyle := lipgloss.NewStyle().Foreground(theme.StatusInfo)
-
 	parts := make([]string, 0, len(m.Keys.ShortHelp()))
 	for _, b := range m.Keys.ShortHelp() {
 		h := b.Help()
